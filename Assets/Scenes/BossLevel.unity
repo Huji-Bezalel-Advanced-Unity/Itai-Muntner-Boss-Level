@@ -829,12 +829,14 @@ MonoBehaviour:
   muzzle: {fileID: 1871323042}
   player: {fileID: 1157440179}
   telegraph: {fileID: 1000609912}
+  attacks:
+  - {fileID: 11400000, guid: 5f5f402194f0efe4f87436c7e5798819, type: 2}
+  - {fileID: 11400000, guid: 55e6330483a20d84bb82cba8e73a93fe, type: 2}
+  - {fileID: 11400000, guid: 164c5ae58a72dc44ea18ebfc2234edcc, type: 2}
+  - {fileID: 11400000, guid: a95128e7981f8c84aa672e1aaa38d83f, type: 2}
+  - {fileID: 11400000, guid: b3ef47ffb6a666244a61a49153488c9c, type: 2}
   openingDelay: 1.5
-  telegraphDuration: 0.7
-  recoveryDuration: 0.9
   cooldownRange: {x: 0.5, y: 1.2}
-  bulletCount: 5
-  arcDegrees: 60
 --- !u!1 &1140637323
 GameObject:
   m_ObjectHideFlags: 0
