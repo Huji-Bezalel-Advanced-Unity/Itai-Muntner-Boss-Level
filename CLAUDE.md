@@ -140,6 +140,14 @@ win/lose end states.
   belongs in `Awake`.
 - **`LoadSceneAsync` progress caps at 0.9** while `allowSceneActivation` is
   false. Remap `0..0.9` to `0..1` or the bar appears to stall.
+- **A `MonoBehaviour` defined in an editor-only assembly cannot be added with
+  `AddComponent`** — it fails with *"Can't add script behaviour X because it is
+  an editor script."* An EditMode test assembly has
+  `"includePlatforms": ["Editor"]`, so any test double that must be a real
+  component belongs in `BossLevel.TestSupport` instead: a normal runtime
+  assembly kept out of player builds by the `UNITY_INCLUDE_TESTS` define
+  constraint. Testing a component that already lives in `BossLevel.Runtime`
+  (such as `Health`) is fine and needs none of this.
 
 ---
 

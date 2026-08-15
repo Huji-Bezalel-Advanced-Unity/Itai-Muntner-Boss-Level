@@ -3,6 +3,7 @@
     "rootNamespace": "BossLevel.Tests",
     "references": [
         "BossLevel.Runtime",
+        "BossLevel.TestSupport",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
