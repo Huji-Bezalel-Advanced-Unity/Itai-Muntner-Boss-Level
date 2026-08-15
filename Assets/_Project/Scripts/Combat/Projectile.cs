@@ -46,7 +46,12 @@ namespace BossLevel.Combat
             // it would sail straight through a static target such as the boss or the ground.
             body.useFullKinematicContacts = true;
 
-            GetComponent<Collider2D>().isTrigger = true;
+            // Collider2D is abstract, so RequireComponent cannot add one for us — the concrete
+            // shape has to be added by hand. Configure it only if it is already there.
+            if (TryGetComponent<Collider2D>(out var shape))
+            {
+                shape.isTrigger = true;
+            }
         }
 
         private void Awake()
