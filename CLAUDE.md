@@ -145,12 +145,19 @@ win/lose end states.
 
 ## Starter code status
 
-`Assets/BBB/` contains boilerplate the author carried between projects —
-`MonoSingleton`, `MonoPool`, `IPoolable`, `PlayerMovement`, `PassThroughPlatform`.
-**The author has confirmed it is not meaningful and can be freely renamed,
-rewritten, or deleted**, along with the folder hierarchy. Concepts are kept;
-implementations are replaced. Per-file rationale in `Documentation/DESIGN.md`
-§15.
+`Assets/BBB/` held boilerplate the author carried between projects. **The author
+confirmed it is not meaningful and can be freely renamed, rewritten, or
+deleted**, along with the folder hierarchy. Concepts are kept; implementations
+are replaced. Per-file rationale in `Documentation/DESIGN.md` §15.
+
+`MonoSingleton`, `MonoPool`, and the old `IPoolable` are gone, replaced by
+`Common/PersistentSingleton`, `Common/Pool<T>`, and `Common/IPoolable`.
+
+`PlayerMovement.cs` and `PassThroughPlatform.cs` were **moved, not rewritten**,
+and still carry their original `BBB.Scripts.*` namespaces. This is deliberate:
+their `.meta` GUIDs are referenced by the `BossLevel` scene, so keeping them
+intact leaves the greybox working until Milestone 2 replaces them properly.
+They are interim, not examples of the project's conventions.
 
 The `BossLevel` scene greybox and its four `PlatformEffector2D` platforms are
 worth keeping.
@@ -159,17 +166,32 @@ worth keeping.
 
 ## Open questions
 
-- The assignment describes scope as "Survivor.io boss phase." This project reads
-  that as *scale of deliverable*, not *genre to copy*, and builds a Cuphead-style
-  side-scroller. **To be confirmed with the instructor.**
-- DOTween is not yet installed; it must be imported from the Asset Store on the
-  Unity machine before any tween code will compile.
+- ~~"Survivor.io boss phase" scope~~ — **resolved.** The instructor's intent is
+  *scale of deliverable*, not genre. The Cuphead-style side-scroller stands.
+- DOTween has been installed on the Unity machine. It is not yet visible in this
+  clone, so its exact layout (DLL vs. source, whether it ships an `.asmdef`) is
+  unconfirmed. If tween code fails to compile from within `BossLevel.Runtime`,
+  the fix is adding a reference to DOTween's assembly in the `.asmdef`.
 
 ---
 
 ## Current state
 
-Design document written. No production code written yet. Next milestone is
-Foundation: restructure into `Assets/_Project/`, add assembly definitions,
-replace the starter scripts. See `Documentation/DESIGN.md` §16 for the full
-build order.
+**Milestone 1 (Foundation) written, not yet compiled.** Delivered:
+
+- Restructured into `Assets/_Project/`
+- `BossLevel.Runtime` and `BossLevel.Tests` assembly definitions
+- `Common/`: `IPoolable`, `Pool<T>`, `PersistentSingleton<T>`
+- `Combat/`: `IDamageable`, `Health`
+- `Tests/EditMode/`: `HealthTests` (10 cases), `PoolTests` (9 cases), `PoolDummy`
+
+No `BossLevel.Editor` assembly yet — it arrives with the setup tooling.
+
+**Next: Milestone 2 (Player)** — `PlayerInputReader`, `PlayerMotor`,
+`PlayerShooter`, replacing the two interim scripts above. Input binds against
+the existing `InputSystem_Actions` asset via a serialized `InputActionAsset`
+field and `FindAction`, because the asset has `generateWrapperCode: 0` and this
+avoids requiring an editor step before the code will compile. The asset already
+defines `Move`, `Jump`, `Attack`, and `Crouch` (reused as drop-through).
+
+See `Documentation/DESIGN.md` §16 for the full build order.
