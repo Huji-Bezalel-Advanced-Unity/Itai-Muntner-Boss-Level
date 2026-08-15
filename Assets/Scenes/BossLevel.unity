@@ -662,7 +662,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   health: {fileID: 1000609908}
   flashColour: {r: 0.9924528, g: 0, b: 0, a: 1}
-  flashDuration: 0.08
+  flashDuration: 0.1
 --- !u!114 &1000609908
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -676,6 +676,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 100
+  currentHealth: 100
 --- !u!61 &1000609909
 BoxCollider2D:
   m_ObjectHideFlags: 0
