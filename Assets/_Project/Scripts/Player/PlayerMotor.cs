@@ -18,6 +18,9 @@ namespace BossLevel.Player
     [DisallowMultipleComponent]
     public class PlayerMotor : MonoBehaviour
     {
+        /// <summary>Below this much input, facing is left alone rather than flipped.</summary>
+        private const float FacingDeadzone = 0.01f;
+
         [Header("Dependencies")]
         [SerializeField] private PlayerInputReader input;
 
@@ -66,6 +69,12 @@ namespace BossLevel.Player
 
         /// <summary>Whether the player is currently standing on something.</summary>
         public bool IsGrounded { get; private set; }
+
+        /// <summary>
+        /// The direction the player is facing: 1 for right, -1 for left. Retained while standing
+        /// still, so aiming does not snap back to a default the moment the player stops.
+        /// </summary>
+        public float Facing { get; private set; } = 1f;
 
         private Vector2 GroundCheckPosition => (Vector2)transform.position + groundCheckOffset;
 
@@ -139,9 +148,17 @@ namespace BossLevel.Player
 
         private void ApplyHorizontalMovement()
         {
+            var move = input.HorizontalMove;
+
             var velocity = _body.linearVelocity;
-            velocity.x = input.HorizontalMove * moveSpeed;
+            velocity.x = move * moveSpeed;
             _body.linearVelocity = velocity;
+
+            // A deadzone keeps analogue drift or a barely-touched key from flipping the facing.
+            if (Mathf.Abs(move) > FacingDeadzone)
+            {
+                Facing = Mathf.Sign(move);
+            }
         }
 
         private void ApplyJump()

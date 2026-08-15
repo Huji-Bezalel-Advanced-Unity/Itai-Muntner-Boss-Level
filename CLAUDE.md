@@ -140,6 +140,10 @@ win/lose end states.
   belongs in `Awake`.
 - **`LoadSceneAsync` progress caps at 0.9** while `allowSceneActivation` is
   false. Remap `0..0.9` to `0..1` or the bar appears to stall.
+- **A kinematic `Rigidbody2D` only reports contacts against dynamic bodies**
+  unless `useFullKinematicContacts` is enabled. A kinematic projectile without
+  it sails straight through static targets and geometry, silently. `Projectile`
+  sets it in `Reset()`.
 - **`PlatformEffector2D` Surface Arc must be below 180°** (160 is used here).
   At the default 180 the arc spans exactly ±90° from up, so a side contact —
   normal exactly horizontal — sits on the boundary and counts as solid surface,
@@ -219,5 +223,18 @@ DOTween is confirmed present as a plain DLL at
 `BossLevel.Runtime` sets `"overrideReferences": false`, it is auto-referenced —
 **no asmdef change is needed to use DOTween.**
 
-**Next: Milestone 3 (Combat loop)** — `Projectile`, `ProjectilePool`,
-`PlayerShooter`, and a dummy target, per `Documentation/DESIGN.md` §16.
+**Milestone 3 (Combat loop) — written, not yet compiled.** `Combat/Projectile`,
+`Combat/ProjectilePool`, `Player/PlayerShooter`, `Feel/SpriteFlash`, and a
+`Facing` property added to `PlayerMotor` so shots follow the way the player
+faces.
+
+`Projectile` filters what it may hit with a serialized `LayerMask` rather than
+the physics collision matrix. That is deliberate for now: it needs no new
+layers, so it works in the existing scene. The layer-and-matrix version arrives
+with the `Boss Level ▸ Configure Project` editor tooling.
+
+`SpriteFlash` is a placeholder driving `SpriteRenderer.color`; the final version
+drives `_FlashAmount` on the Shader Graph material (Milestone 8).
+
+**Next: Milestone 4 (Boss skeleton)** — one hardcoded attack running the full
+telegraph → active → recovery → idle loop, per `Documentation/DESIGN.md` §16.
