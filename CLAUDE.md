@@ -263,11 +263,27 @@ Milestone 8 shader resolves this properly, which is exactly why the design gives
 - `AttackSelectorTests` — 7 cases, including no back-to-back repeats across 50
   seeds and 200 draws each.
 
-**Attack assets do not exist yet.** The C# types are there but no `.asset` files
-have been authored; the user creates them from
-*Assets ▸ Create ▸ Boss Level ▸ Attacks ▸ …* and drops them into
-`BossController.attacks`.
+All five attack assets are authored and in `_Project/Data/Attacks/`.
 
-**Next: Milestone 6 (Phases)** — `BossPhase` and `BossDefinition` assets, health
-thresholds, the non-interrupting phase transition, and win/lose, per
+**Milestone 6 (Phases) — written, not yet compiled.**
+
+- `Boss/Data/BossPhase` — attacks, cooldown range, telegraph and recovery
+  multipliers, health threshold.
+- `Boss/Data/BossDefinition` — max health plus an ordered phase list.
+- `Boss/BossPhaseMachine` — thresholds and indices only, no Unity dependency.
+  Advances one phase per call and never backwards.
+- `BossController` — now driven by a `BossDefinition`; its `attacks` list and
+  `cooldownRange` are gone, replaced by whatever the current phase says. Runs
+  the transition between attacks, never during one. Gained `StopFighting()`
+  and a `PhaseChanged` event.
+- `Player/PlayerDamageResponse` — invulnerability frames plus a blink.
+- `App/GameStateMachine` — Intro → Fighting → Won | Lost, toggling
+  `PlayerInputReader` to take control away at the two moments it should be gone.
+- `BossPhaseMachineTests` — 10 cases, including the phase-skip case.
+
+**Phase and boss assets do not exist yet.** The user authors them from
+*Assets ▸ Create ▸ Boss Level ▸ Phase* and *▸ Boss Definition*.
+
+**Next: Milestone 7 (Shell)** — Bootstrap scene, `SceneLoader`, main menu,
+loading screen, health bars, phase banner, end screens, per
 `Documentation/DESIGN.md` §16.

@@ -338,9 +338,15 @@ resume with the new phase's attack set
 
 This is not decoration. It gives the player a breath, telegraphs that the rules
 just changed, and prevents the distinctly unfair feeling of dying to an attack
-that was cancelled halfway through. A guarded transition also means the phase
-machine cannot skip a phase when a single large hit crosses two thresholds at
-once — a real bug that a health-threshold check written naively will produce.
+that was cancelled halfway through.
+
+`BossPhaseMachine` deals in **thresholds and indices only** and knows nothing
+about what a phase contains, which keeps it plain C# and testable in
+milliseconds without creating a single asset. It **advances at most one phase
+per call**: a single large hit can cross two thresholds at once, and the naive
+check would jump from phase one to phase three, skipping a transition the player
+was owed. The controller advances in a loop, so both transitions play in order.
+It also never moves backwards, so healing the boss cannot rewind the fight.
 
 **Attack machine (inner).** Every attack runs the same four beats:
 
