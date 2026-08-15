@@ -140,6 +140,11 @@ win/lose end states.
   belongs in `Awake`.
 - **`LoadSceneAsync` progress caps at 0.9** while `allowSceneActivation` is
   false. Remap `0..0.9` to `0..1` or the bar appears to stall.
+- **`PlatformEffector2D` Surface Arc must be below 180°** (160 is used here).
+  At the default 180 the arc spans exactly ±90° from up, so a side contact —
+  normal exactly horizontal — sits on the boundary and counts as solid surface,
+  making platform sides block the player in mid-air. The platform's collider
+  also needs **Used By Effector** enabled or the effector does nothing.
 - **A `MonoBehaviour` defined in an editor-only assembly cannot be added with
   `AddComponent`** — it fails with *"Can't add script behaviour X because it is
   an editor script."* An EditMode test assembly has
