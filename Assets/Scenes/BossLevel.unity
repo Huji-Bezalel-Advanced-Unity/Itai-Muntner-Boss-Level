@@ -641,8 +641,10 @@ GameObject:
   - component: {fileID: 1000609909}
   - component: {fileID: 1000609908}
   - component: {fileID: 1000609907}
+  - component: {fileID: 1000609913}
+  - component: {fileID: 1000609912}
   m_Layer: 7
-  m_Name: Square
+  m_Name: Boss
   m_TagString: Boss
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -790,9 +792,49 @@ Transform:
   m_LocalPosition: {x: 6.56, y: -1.01, z: 0}
   m_LocalScale: {x: 2.56, y: 5.97, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1871323042}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1000609912
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000609906}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eac119ef33b63cd419ea8f413e8da0a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  target: {fileID: 1000609910}
+  telegraphColour: {r: 1, g: 0.8, b: 0.35, a: 1}
+  scalePunch: 0.08
+  windUpFraction: 0.7
+--- !u!114 &1000609913
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000609906}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02d8846d14de25c4da117308c33b463d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  health: {fileID: 1000609908}
+  projectiles: {fileID: 1906811257}
+  muzzle: {fileID: 1871323042}
+  player: {fileID: 1157440179}
+  telegraph: {fileID: 1000609912}
+  openingDelay: 1.5
+  telegraphDuration: 0.7
+  recoveryDuration: 0.9
+  cooldownRange: {x: 0.5, y: 1.2}
+  bulletCount: 5
+  arcDegrees: 60
 --- !u!1 &1140637323
 GameObject:
   m_ObjectHideFlags: 0
@@ -839,6 +881,8 @@ GameObject:
   - component: {fileID: 1157440175}
   - component: {fileID: 1157440174}
   - component: {fileID: 1157440180}
+  - component: {fileID: 1157440182}
+  - component: {fileID: 1157440181}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -1038,6 +1082,35 @@ MonoBehaviour:
   projectiles: {fileID: 1904951587}
   muzzle: {fileID: 1140637324}
   shotsPerSecond: 6
+--- !u!114 &1157440181
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1157440173}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab116d60f8f3a2a4b866ed8e1eab37cd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  health: {fileID: 1157440182}
+  flashColour: {r: 1, g: 0.35, b: 0.35, a: 1}
+  flashDuration: 0.1
+--- !u!114 &1157440182
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1157440173}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10a3cf5cbd5b64940877bf346b19a77a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 100
+  currentHealth: 100
 --- !u!1 &1496057658
 GameObject:
   m_ObjectHideFlags: 0
@@ -1192,6 +1265,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1871323041
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1871323042}
+  m_Layer: 7
+  m_Name: Muzzle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1871323042
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1871323041}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.6, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1000609911}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1904951586
 GameObject:
   m_ObjectHideFlags: 0
@@ -1234,6 +1338,53 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -2.1933014, y: -2.179734, z: -9.917893}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1906811256
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1906811258}
+  - component: {fileID: 1906811257}
+  m_Layer: 0
+  m_Name: BossProjectilePool
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1906811257
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1906811256}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8eb5316008360e644a9d40faf388a12d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefab: {fileID: 1169348478484993120, guid: b8e692055911d0948ae4fb9e9b88f482, type: 3}
+  initialSize: 32
+  container: {fileID: 0}
+--- !u!4 &1906811258
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1906811256}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.9842464, y: -1.1867036, z: -9.954167}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1405,4 +1556,5 @@ SceneRoots:
   - {fileID: 1496057662}
   - {fileID: 1157440179}
   - {fileID: 1904951588}
+  - {fileID: 1906811258}
   - {fileID: 1000609911}
