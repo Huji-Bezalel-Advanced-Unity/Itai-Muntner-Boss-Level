@@ -15,6 +15,11 @@ MonoBehaviour:
   displayName: Rain
   telegraphDuration: 0.9
   recoveryDuration: 0.8
+  telegraphCue:
+    Colour: {r: 0.6131954, g: 0, b: 1, a: 1}
+    Pulses: 2
+    ScalePunch: {x: -0.05, y: 0.2}
+    ShakeStrength: 0
   dropCount: 8
   delayBetweenDrops: 0.12
   spawnHeight: 7

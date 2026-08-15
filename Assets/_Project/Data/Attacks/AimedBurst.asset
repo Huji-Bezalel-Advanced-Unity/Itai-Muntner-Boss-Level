@@ -15,6 +15,11 @@ MonoBehaviour:
   displayName: AimedBurst
   telegraphDuration: 0.5
   recoveryDuration: 0.8
+  telegraphCue:
+    Colour: {r: 1, g: 0.088168256, b: 0, a: 1}
+    Pulses: 3
+    ScalePunch: {x: 0.06, y: 0.06}
+    ShakeStrength: 0
   shotCount: 3
   delayBetweenShots: 0.18
   aimJitterDegrees: 3

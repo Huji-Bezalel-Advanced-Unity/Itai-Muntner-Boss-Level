@@ -15,6 +15,11 @@ MonoBehaviour:
   displayName: Sweep
   telegraphDuration: 0.8
   recoveryDuration: 1
+  telegraphCue:
+    Colour: {r: 0, g: 1, b: 0.80588627, a: 1}
+    Pulses: 1
+    ScalePunch: {x: 0.05, y: 0.2}
+    ShakeStrength: 0
   shotCount: 12
   sweepDegrees: 70
   duration: 1.2

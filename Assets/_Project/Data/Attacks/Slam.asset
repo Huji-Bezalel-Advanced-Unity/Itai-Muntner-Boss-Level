@@ -15,6 +15,11 @@ MonoBehaviour:
   displayName: Slam
   telegraphDuration: 0.8
   recoveryDuration: 1.1
+  telegraphCue:
+    Colour: {r: 1, g: 0.5529752, b: 0, a: 1}
+    Pulses: 1
+    ScalePunch: {x: 0.2, y: -0.15}
+    ShakeStrength: 0.25
   groundOffset: -3
   waveCount: 2
   delayBetweenWaves: 0.55
