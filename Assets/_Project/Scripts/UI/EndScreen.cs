@@ -2,6 +2,7 @@ using BossLevel.App;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace BossLevel.UI
@@ -101,11 +102,27 @@ namespace BossLevel.UI
 
         private void Retry()
         {
-            SceneLoader.Instance.Load(SceneId.BossLevel);
+            if (SceneLoader.Exists)
+            {
+                SceneLoader.Instance.Load(SceneId.BossLevel);
+                return;
+            }
+
+            // Playing the fight scene on its own, without going through Bootstrap, is the normal
+            // way to iterate on it. Reloading in place keeps Retry working there instead of
+            // failing on a service that only exists in a full run.
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
 
         private void ReturnToMenu()
         {
+            if (!SceneLoader.Exists)
+            {
+                Debug.LogWarning(
+                    "No SceneLoader — start from the Bootstrap scene to reach the menu.", this);
+                return;
+            }
+
             SceneLoader.Instance.Load(SceneId.MainMenu);
         }
     }
