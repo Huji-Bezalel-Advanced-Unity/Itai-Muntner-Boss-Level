@@ -16,6 +16,10 @@ namespace BossLevel.Combat
     {
         [SerializeField, Min(1)] private int maxHealth = 100;
 
+        [Tooltip("Driven by code, not set by hand. Serialized only so remaining health can be " +
+                 "watched in the Inspector while playing.")]
+        [SerializeField] private int currentHealth;
+
         /// <summary>Raised on every change, with (current, max). Health bars listen to this.</summary>
         public event Action<int, int> Changed;
 
@@ -25,7 +29,7 @@ namespace BossLevel.Combat
         /// <summary>Raised exactly once, the moment health first reaches zero.</summary>
         public event Action Died;
 
-        public int Current { get; private set; }
+        public int Current => currentHealth;
 
         public int Max => maxHealth;
 
@@ -55,9 +59,9 @@ namespace BossLevel.Combat
         public void ResetTo(int newMax)
         {
             maxHealth = Mathf.Max(1, newMax);
-            Current = maxHealth;
+            currentHealth = maxHealth;
             IsInvulnerable = false;
-            Changed?.Invoke(Current, maxHealth);
+            Changed?.Invoke(currentHealth, maxHealth);
         }
 
         public void TakeDamage(int amount)
@@ -69,13 +73,13 @@ namespace BossLevel.Combat
                 return;
             }
 
-            var applied = Mathf.Min(amount, Current);
-            Current -= applied;
+            var applied = Mathf.Min(amount, currentHealth);
+            currentHealth -= applied;
 
             Damaged?.Invoke(applied);
-            Changed?.Invoke(Current, maxHealth);
+            Changed?.Invoke(currentHealth, maxHealth);
 
-            if (Current == 0)
+            if (currentHealth == 0)
             {
                 Died?.Invoke();
             }
@@ -89,8 +93,8 @@ namespace BossLevel.Combat
                 return;
             }
 
-            Current = Mathf.Min(Current + amount, maxHealth);
-            Changed?.Invoke(Current, maxHealth);
+            currentHealth = Mathf.Min(currentHealth + amount, maxHealth);
+            Changed?.Invoke(currentHealth, maxHealth);
         }
     }
 }

@@ -18,8 +18,12 @@ namespace BossLevel.Feel
     public class SpriteFlash : MonoBehaviour
     {
         [SerializeField] private Health health;
-        [SerializeField] private Color flashColour = Color.white;
-        [SerializeField] private float flashDuration = 0.08f;
+
+        [Tooltip("Must differ from the sprite's own colour, or the flash is invisible. White is " +
+                 "a poor default precisely because untouched sprites are already white.")]
+        [SerializeField] private Color flashColour = new Color(1f, 0.35f, 0.35f);
+
+        [SerializeField] private float flashDuration = 0.1f;
 
         private SpriteRenderer _renderer;
         private Color _baseColour;
@@ -34,6 +38,16 @@ namespace BossLevel.Feel
             {
                 Debug.LogError($"{nameof(SpriteFlash)} has no {nameof(Health)} assigned.", this);
                 enabled = false;
+                return;
+            }
+
+            // An invisible flash looks exactly like a flash that never fired, which is a
+            // genuinely confusing thing to debug. Say so instead.
+            if (flashColour == _baseColour)
+            {
+                Debug.LogWarning(
+                    $"{nameof(SpriteFlash)} flash colour matches the sprite's own colour, " +
+                    "so hits will produce no visible change.", this);
             }
         }
 
