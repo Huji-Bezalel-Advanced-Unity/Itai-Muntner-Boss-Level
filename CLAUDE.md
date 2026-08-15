@@ -185,21 +185,34 @@ worth keeping.
 
 ## Current state
 
-**Milestone 1 (Foundation) written, not yet compiled.** Delivered:
+**Milestone 1 (Foundation) — done, verified.** 18 EditMode tests green on the
+Unity machine.
 
 - Restructured into `Assets/_Project/`
-- `BossLevel.Runtime` and `BossLevel.Tests` assembly definitions
+- `BossLevel.Runtime`, `BossLevel.Tests`, `BossLevel.TestSupport` assemblies
 - `Common/`: `IPoolable`, `Pool<T>`, `PersistentSingleton<T>`
 - `Combat/`: `IDamageable`, `Health`
-- `Tests/EditMode/`: `HealthTests` (10 cases), `PoolTests` (9 cases), `PoolDummy`
+- Tests: `HealthTests` (10), `PoolTests` (8), `PoolDummy` in TestSupport
 
 No `BossLevel.Editor` assembly yet — it arrives with the setup tooling.
 
-**Next: Milestone 2 (Player)** — `PlayerInputReader`, `PlayerMotor`,
-`PlayerShooter`, replacing the two interim scripts above. Input binds against
-the existing `InputSystem_Actions` asset via a serialized `InputActionAsset`
-field and `FindAction`, because the asset has `generateWrapperCode: 0` and this
-avoids requiring an editor step before the code will compile. The asset already
-defines `Move`, `Jump`, `Attack`, and `Crouch` (reused as drop-through).
+**Milestone 2 (Player) — written, not yet compiled.** `PlayerInputReader` and
+`PlayerMotor`. `PlayerMovement` and `PassThroughPlatform` deleted.
 
-See `Documentation/DESIGN.md` §16 for the full build order.
+Input binds against the existing `InputSystem_Actions` asset through a
+serialized `InputActionAsset` field plus `FindAction`, because the asset has
+`generateWrapperCode: 0`; this avoids requiring an editor step before the code
+compiles. Actions used: `Move`, `Jump`, `Attack`, and `Crouch` (reused as
+drop-through).
+
+Drop-through has **no platform component**. A surface is droppable exactly when
+it has a `PlatformEffector2D`, so `PlayerMotor` tests for that rather than using
+a marker script or a dedicated layer.
+
+DOTween is confirmed present as a plain DLL at
+`Assets/Plugins/Demigiant/DOTween/DOTween.dll` with no `.asmdef`. Because
+`BossLevel.Runtime` sets `"overrideReferences": false`, it is auto-referenced —
+**no asmdef change is needed to use DOTween.**
+
+**Next: Milestone 3 (Combat loop)** — `Projectile`, `ProjectilePool`,
+`PlayerShooter`, and a dummy target, per `Documentation/DESIGN.md` §16.

@@ -140,7 +140,7 @@ Assets/_Project/
 │   │   ├── Attacks/             BossAttack + one file per concrete attack
 │   │   └── Data/                BossDefinition, BossPhase
 │   ├── Combat/                  IDamageable, Health, Projectile,
-│   │                            ProjectilePool, OneWayPlatform
+│   │                            ProjectilePool
 │   ├── UI/                      BossHealthBar, PlayerHealthView,
 │   │                            PhaseBanner, EndScreen, LoadingScreen
 │   ├── Feel/                    HitStop, CameraShake, SpriteFlash
@@ -295,6 +295,12 @@ falling through the world forever.
 
 Placing the logic on the player also means input is read once per frame instead
 of once per platform per frame.
+
+**No platform component is needed at all.** A platform is droppable exactly when
+it is one-way, and what makes it one-way is its `PlatformEffector2D`. The motor
+therefore tests the surface it is standing on for that component rather than
+asking a marker script or a dedicated layer. One less file, one less thing to
+remember to attach, and no way for the two to disagree.
 
 ---
 
@@ -580,8 +586,13 @@ fallback would have produced a pool with a null prefab that throws on first use.
 The replacement splits the generic from the component: `Pool<T>` is a **plain C#
 generic class** with no Unity component involvement, owned by a small concrete
 `MonoBehaviour` (`ProjectilePool`) that holds the serialized configuration. The
-generic-component problem disappears entirely, and `Pool<T>` becomes
-unit-testable as a bonus.
+generic-component problem disappears entirely.
+
+`Pool<T>` is still not *pure* C# — it calls `Object.Instantiate` and toggles
+GameObject activation — so testing it needs a real component, supplied by the
+`BossLevel.TestSupport` assembly. It could be made engine-free by taking a
+factory delegate and moving activation into `IPoolable`, but that trades an
+indirection the reader must follow for purity the project does not need.
 
 **`IPoolable.Reset()` → `OnSpawn()` / `OnDespawn()`.** `MonoBehaviour` already
 defines `Reset()`, which Unity invokes **in the editor** when a component is
@@ -610,10 +621,12 @@ impulse, feel affordances added, input centralised, and the ground check's
 position with a local scale and breaks if the player is rescaled — replaced with
 an explicit serialized offset and radius.
 
-**`PassThroughPlatform` → `OneWayPlatform` + motor logic.** Rationale in §6:
-per-pair `IgnoreCollision` instead of disabling the collider globally,
-position-based restore instead of a fixed timer, and input read once on the
-player instead of once per platform per frame.
+**`PassThroughPlatform` → deleted, its job absorbed by `PlayerMotor`.**
+Rationale in §6: per-pair `IgnoreCollision` instead of disabling the collider
+globally, position-based restore instead of a fixed timer, and input read once
+on the player instead of once per platform per frame. No replacement component
+is needed, because the `PlatformEffector2D` already identifies a droppable
+surface.
 
 ---
 
