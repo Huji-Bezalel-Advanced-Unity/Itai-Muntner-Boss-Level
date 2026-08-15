@@ -1,23 +1,24 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using BossLevel.Boss.Attacks;
 using BossLevel.Combat;
 using UnityEngine;
 
 namespace BossLevel.Boss
 {
     /// <summary>
-    /// Runs the boss fight: warn, strike, recover, pause, repeat, until the boss dies.
+    /// Runs the boss fight: choose an attack, warn, strike, recover, pause, repeat.
     /// </summary>
     /// <remarks>
-    /// This milestone carries a single hardcoded attack. That is deliberate — the four-beat
-    /// rhythm around the attack is the part that matters, and building one real attack first
-    /// means the ScriptableObject attack system that replaces it is shaped by an actual case
-    /// rather than a guess at one. Only the middle beat changes.
+    /// The controller owns the rhythm; the attack assets own their own shape. That split is the
+    /// point of the design. Telegraph and recovery are sequenced here rather than inside each
+    /// attack, so the fairness contract holds for every attack ever authored — the player always
+    /// gets a visible warning before damage, and always gets a window where the boss is
+    /// committed and can be punished. An attack written later cannot quietly omit either.
     /// <para>
-    /// Telegraph and recovery live here rather than inside the attack itself, so the fairness
-    /// contract holds for every attack ever added: the player always gets a visible warning
-    /// before damage, and always gets a window in which the boss is committed and can be
-    /// punished. Stated once here, it cannot be quietly forgotten by an attack written later.
+    /// It also means difficulty scaling is data, not code: a later phase shortens the telegraph
+    /// and recovery, and every attack in that phase becomes harder without being rewritten.
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -32,33 +33,29 @@ namespace BossLevel.Boss
         [Tooltip("Optional. Without it the fight still runs, just with no visible wind-up.")]
         [SerializeField] private BossTelegraph telegraph;
 
-        [Header("Attack rhythm")]
+        [Header("Attacks")]
+        [Tooltip("The attacks this boss can use. Listing one twice makes it twice as likely.")]
+        [SerializeField] private List<BossAttack> attacks = new List<BossAttack>();
+
+        [Header("Rhythm")]
         [Tooltip("Breathing room before the first attack, so the fight does not open mid-swing.")]
-        [SerializeField] private float openingDelay = 1.5f;
+        [SerializeField, Min(0f)] private float openingDelay = 1.5f;
 
-        [Tooltip("Visible warning before damage. This is the player's reaction time — shortening " +
-                 "it is the main lever for making a later phase harder.")]
-        [SerializeField] private float telegraphDuration = 0.7f;
-
-        [Tooltip("The boss is committed and cannot act. This is the player's damage window.")]
-        [SerializeField] private float recoveryDuration = 0.9f;
-
-        [Tooltip("Idle pause before the next attack, randomised so the fight does not feel " +
-                 "metronomic.")]
+        [Tooltip("Idle pause between attacks, randomised within this range so the fight does " +
+                 "not feel metronomic.")]
         [SerializeField] private Vector2 cooldownRange = new Vector2(0.5f, 1.2f);
 
-        [Header("Spread shot")]
-        [SerializeField, Min(1)] private int bulletCount = 5;
-
-        [Tooltip("Total width of the fan, centred on the player.")]
-        [SerializeField, Range(0f, 360f)] private float arcDegrees = 60f;
-
         /// <summary>
-        /// Raised once, when the boss is defeated. The game state machine will listen to this to
+        /// Raised once, when the boss is defeated. The game state machine listens to this to
         /// drive the win sequence.
         /// </summary>
         public event Action Defeated;
 
+        /// <summary>The attack currently being telegraphed or executed, or null between attacks.</summary>
+        public BossAttack CurrentAttack { get; private set; }
+
+        private BossContext _context;
+        private AttackSelector _selector;
         private Coroutine _fightLoop;
 
         private void Awake()
@@ -67,7 +64,22 @@ namespace BossLevel.Boss
             {
                 Debug.LogError($"{nameof(BossController)} is missing a reference.", this);
                 enabled = false;
+                return;
             }
+
+            // An empty slot in the list is easy to leave behind while authoring and would
+            // otherwise surface much later as a null attack mid-fight.
+            var usableAttacks = attacks.FindAll(attack => attack != null);
+
+            if (usableAttacks.Count == 0)
+            {
+                Debug.LogError($"{nameof(BossController)} has no attacks assigned.", this);
+                enabled = false;
+                return;
+            }
+
+            _context = new BossContext(transform, muzzle, player, projectiles);
+            _selector = new AttackSelector(usableAttacks);
         }
 
         private void OnEnable()
@@ -88,45 +100,25 @@ namespace BossLevel.Boss
 
             while (health.IsAlive)
             {
-                // Telegraph — the warning. No damage happens during this window.
-                telegraph?.Play(telegraphDuration);
-                yield return new WaitForSeconds(telegraphDuration);
+                var attack = _selector.Next();
+                CurrentAttack = attack;
 
-                // Active — the threat. Instantaneous for this attack; later ones will hold here.
-                FireSpread();
+                // Telegraph — the warning. Nothing damaging happens during this window.
+                telegraph?.Play(attack.TelegraphDuration);
+                yield return new WaitForSeconds(attack.TelegraphDuration);
+
+                // Active — the threat. Yielding the attack's own coroutine runs it inline, so
+                // stopping this loop also stops whatever the attack was in the middle of.
+                yield return attack.Execute(_context);
 
                 // Recovery — the boss is committed. This is when the player answers back.
-                yield return new WaitForSeconds(recoveryDuration);
+                yield return new WaitForSeconds(attack.RecoveryDuration);
 
-                // Idle — pacing, so attacks do not run together into a wall.
+                CurrentAttack = null;
+
+                // Idle — pacing, so attacks do not run together into an unbroken wall.
                 yield return new WaitForSeconds(
                     UnityEngine.Random.Range(cooldownRange.x, cooldownRange.y));
-            }
-        }
-
-        /// <summary>
-        /// Fires a fan of projectiles centred on wherever the player is standing at the moment
-        /// the shot goes off — aiming at the telegraph's end, not its start, so backing away
-        /// during the wind-up does not make the attack miss for free.
-        /// </summary>
-        private void FireSpread()
-        {
-            var origin = (Vector2)muzzle.position;
-            var toPlayer = (Vector2)player.position - origin;
-
-            var centreAngle = Mathf.Atan2(toPlayer.y, toPlayer.x) * Mathf.Rad2Deg;
-            var startAngle = centreAngle - arcDegrees * 0.5f;
-
-            // With a single bullet there is no gap to divide, so fire it straight down the middle.
-            var angleStep = bulletCount > 1 ? arcDegrees / (bulletCount - 1) : 0f;
-            var firstAngle = bulletCount > 1 ? startAngle : centreAngle;
-
-            for (var i = 0; i < bulletCount; i++)
-            {
-                var angle = (firstAngle + angleStep * i) * Mathf.Deg2Rad;
-                var direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-
-                projectiles.Spawn(origin, direction);
             }
         }
 
@@ -134,9 +126,10 @@ namespace BossLevel.Boss
         {
             StopFightLoop();
             telegraph?.Stop();
+            CurrentAttack = null;
 
-            // Clear the arena so the player cannot be killed by shots from a boss that is
-            // already dead — which would otherwise turn a win into a draw.
+            // Clear the arena so the player cannot be killed by shots from a boss that is already
+            // dead, which would otherwise turn a win into a draw.
             projectiles.DespawnAll();
 
             Defeated?.Invoke();

@@ -11,12 +11,6 @@ namespace BossLevel.Boss
     /// without touching the rhythm of the fight. The controller owns the timing, because a
     /// telegraph's length is a fairness guarantee rather than a decoration; this component is
     /// only asked to make that window visible for exactly as long as it lasts.
-    /// <para>
-    /// Only DOTween's core API is used. DOTween ships its shortcut extensions (<c>DOColor</c>,
-    /// <c>DOScale</c> and friends) as loose scripts under <c>Assets/Plugins</c>, which Unity
-    /// compiles into a predefined assembly — and an assembly definition cannot reference those.
-    /// <c>DOTween.To</c> lives inside <c>DOTween.dll</c> and is always reachable.
-    /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public class BossTelegraph : MonoBehaviour
@@ -65,10 +59,10 @@ namespace BossLevel.Boss
             var snapBack = duration - windUp;
 
             _sequence = DOTween.Sequence()
-                .Append(TweenColour(telegraphColour, windUp))
-                .Join(TweenScale(_baseScale * (1f + scalePunch), windUp))
-                .Append(TweenColour(_baseColour, snapBack))
-                .Join(TweenScale(_baseScale, snapBack));
+                .Append(target.DOColor(telegraphColour, windUp))
+                .Join(target.transform.DOScale(_baseScale * (1f + scalePunch), windUp))
+                .Append(target.DOColor(_baseColour, snapBack))
+                .Join(target.transform.DOScale(_baseScale, snapBack));
         }
 
         /// <summary>Cancels any tell in progress and puts the sprite back as it was.</summary>
@@ -82,20 +76,6 @@ namespace BossLevel.Boss
                 target.color = _baseColour;
                 target.transform.localScale = _baseScale;
             }
-        }
-
-        private Tween TweenColour(Color to, float duration)
-        {
-            return DOTween.To(() => target.color, value => target.color = value, to, duration);
-        }
-
-        private Tween TweenScale(Vector3 to, float duration)
-        {
-            return DOTween.To(
-                () => target.transform.localScale,
-                value => target.transform.localScale = value,
-                to,
-                duration);
         }
 
         private void OnDisable()

@@ -2,7 +2,8 @@
     "name": "BossLevel.Runtime",
     "rootNamespace": "BossLevel",
     "references": [
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "DOTween.Modules"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
