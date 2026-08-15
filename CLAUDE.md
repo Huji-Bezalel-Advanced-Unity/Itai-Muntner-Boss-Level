@@ -140,6 +140,14 @@ win/lose end states.
   belongs in `Awake`.
 - **`LoadSceneAsync` progress caps at 0.9** while `allowSceneActivation` is
   false. Remap `0..0.9` to `0..1` or the bar appears to stall.
+- **Only DOTween's core API is usable from `BossLevel.Runtime` right now.**
+  `DOTween.dll` is a precompiled assembly and is auto-referenced, so
+  `DOTween.To`, `DOTween.Sequence` and `Tween`/`Sequence` all work. But
+  DOTween's shortcut extensions (`DOColor`, `DOScale`, `DOFade`,
+  `DOAnchorPos`, …) ship as loose `.cs` files under `Assets/Plugins`, which
+  Unity compiles into a **predefined** assembly — and an asmdef cannot reference
+  predefined assemblies. Use `DOTween.To(getter, setter, end, duration)` unless
+  and until `DOTween.Modules.asmdef` is generated and referenced.
 - **A kinematic `Rigidbody2D` only reports contacts against dynamic bodies**
   unless `useFullKinematicContacts` is enabled. A kinematic projectile without
   it sails straight through static targets and geometry, silently. `Projectile`
@@ -185,10 +193,12 @@ worth keeping.
 
 - ~~"Survivor.io boss phase" scope~~ — **resolved.** The instructor's intent is
   *scale of deliverable*, not genre. The Cuphead-style side-scroller stands.
-- DOTween has been installed on the Unity machine. It is not yet visible in this
-  clone, so its exact layout (DLL vs. source, whether it ships an `.asmdef`) is
-  unconfirmed. If tween code fails to compile from within `BossLevel.Runtime`,
-  the fix is adding a reference to DOTween's assembly in the `.asmdef`.
+- **DOTween shortcut extensions are unreachable from our asmdef.** See the
+  gotcha below. Asking the user to run *Tools ▸ Demigiant ▸ DOTween Utility
+  Panel ▸ Create ASMDEF* would generate `DOTween.Modules.asmdef`; adding that to
+  `BossLevel.Runtime`'s references unlocks `DOColor`, `DOFade`,
+  `DOAnchorPos` and the rest. Worth doing before the UI milestone, where those
+  shortcuts matter most.
 
 ---
 
@@ -236,5 +246,20 @@ with the `Boss Level ▸ Configure Project` editor tooling.
 `SpriteFlash` is a placeholder driving `SpriteRenderer.color`; the final version
 drives `_FlashAmount` on the Shader Graph material (Milestone 8).
 
-**Next: Milestone 4 (Boss skeleton)** — one hardcoded attack running the full
-telegraph → active → recovery → idle loop, per `Documentation/DESIGN.md` §16.
+**Milestone 4 (Boss skeleton) — written, not yet compiled.** `Boss/BossController`
+and `Boss/BossTelegraph`, plus an `OnValidate` on `Health` so the serialized
+current value does not sit at zero in the editor after play ends.
+
+`BossController` holds one hardcoded spread-shot attack and owns the four-beat
+rhythm — telegraph, active, recovery, idle. Telegraph and recovery live in the
+controller, not the attack, so the fairness contract is stated once. Milestone 5
+replaces only the middle beat with ScriptableObject attacks.
+
+Known wart: `BossTelegraph` and `SpriteFlash` both write `SpriteRenderer.color`,
+so a hit landing during a telegraph is overwritten by the telegraph tween. The
+Milestone 8 shader resolves this properly, which is exactly why the design gives
+`_FlashAmount` and `_PhaseTint` separate shader properties.
+
+**Next: Milestone 5 (Data layer)** — convert the hardcoded attack into
+`BossAttack` ScriptableObjects, then author attacks 2–5 as assets, per
+`Documentation/DESIGN.md` §16.

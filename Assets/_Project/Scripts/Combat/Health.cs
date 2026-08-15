@@ -50,6 +50,23 @@ namespace BossLevel.Combat
         }
 
         /// <summary>
+        /// Keeps the Inspector value meaningful outside play mode.
+        /// </summary>
+        /// <remarks>
+        /// Because current health is serialized for visibility, leaving play mode restores
+        /// whatever the last session ended on — usually zero, which reads as a corpse sitting in
+        /// the scene even though <see cref="Awake"/> refills it the instant play resumes. Syncing
+        /// to the maximum while not playing keeps the editor honest.
+        /// </remarks>
+        private void OnValidate()
+        {
+            if (!Application.isPlaying)
+            {
+                currentHealth = maxHealth;
+            }
+        }
+
+        /// <summary>
         /// Sets the maximum and refills to full.
         /// </summary>
         /// <remarks>

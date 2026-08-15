@@ -511,6 +511,19 @@ The 10% for juice is cheap to earn and worth doing last, once the fight works.
 Installed from the Asset Store into `Assets/Plugins/Demigiant` and committed, so
 the repository clones and builds without extra setup steps.
 
+**A note on which half of DOTween is reachable.** `DOTween.dll` is a precompiled
+assembly and is auto-referenced by `BossLevel.Runtime`, so the core API —
+`DOTween.To`, `DOTween.Sequence`, `Tween`, `Sequence` — is always available.
+DOTween's *shortcut extensions* (`DOColor`, `DOScale`, `DOFade`, `DOAnchorPos`)
+are shipped as loose scripts under `Assets/Plugins`, which Unity compiles into a
+predefined assembly; an assembly definition cannot reference predefined
+assemblies, so those shortcuts are invisible to project code.
+
+Tween code therefore uses `DOTween.To(getter, setter, endValue, duration)`. The
+alternative — generating `DOTween.Modules.asmdef` from DOTween's utility panel
+and referencing it — is worth taking before the UI work, where the shortcuts are
+most valuable.
+
 ---
 
 ## 12. Coding conventions
