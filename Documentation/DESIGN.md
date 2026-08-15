@@ -270,8 +270,20 @@ weaker than one from rest — an inconsistency the player feels as unreliability
 
 ### One-way platforms
 
-Jump-through-from-below is handled by `PlatformEffector2D` with a 180° surface
-arc, configured on the platforms in the scene. No code required.
+Jump-through-from-below is handled by `PlatformEffector2D`, configured on the
+platforms in the scene. No code required.
+
+**Surface Arc is set to 160°, not the default 180°.** The arc is centred on the
+effector's up direction and decides which contact normals count as solid
+surface. At 180° the arc spans exactly −90° to +90°, so a contact with the
+*side* of a platform — whose normal is precisely horizontal — sits on the
+boundary and is treated as surface, which makes the platform's sides solid and
+stops the player dead in mid-air. Narrowing to 160° excludes horizontal normals
+while costing only 10° at each corner of the landing surface, which is
+irrelevant for landing on top.
+
+The platform colliders must also have **Used By Effector** enabled, or the
+effector has no effect at all.
 
 Drop-through is code, and it lives on the **player**, not the platform. The
 player detects what it is standing on and asks that platform to ignore it:
