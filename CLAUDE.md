@@ -284,6 +284,30 @@ All five attack assets are authored and in `_Project/Data/Attacks/`.
 **Phase and boss assets do not exist yet.** The user authors them from
 *Assets ▸ Create ▸ Boss Level ▸ Phase* and *▸ Boss Definition*.
 
-**Next: Milestone 7 (Shell)** — Bootstrap scene, `SceneLoader`, main menu,
-loading screen, health bars, phase banner, end screens, per
-`Documentation/DESIGN.md` §16.
+**Milestone 7 (Shell) — written, not yet compiled.** Ten files.
+
+`App/`: `SceneId` (enum), `SceneCatalog` (SO mapping id → scene name),
+`SceneLoader` (persistent singleton, async load with held activation and a
+minimum display time), `GameBootstrap`.
+
+`UI/`: `LoadingScreen`, `MainMenu`, `BossHealthBar` (fill + delayed chip),
+`PlayerHealthView` (discrete hearts, one per hit point), `PhaseBanner`,
+`EndScreen`.
+
+`BossLevel.Runtime.asmdef` gained `UnityEngine.UI` and `Unity.TextMeshPro`
+references. **These are the most likely compile failure in this drop** — if
+either assembly name is wrong the whole assembly fails.
+
+UI components hide themselves via `CanvasGroup` alpha rather than by
+deactivating the GameObject, so their `Awake` is guaranteed to have run before
+anything asks them to show. Deactivated-at-start UI is a recurring lifecycle
+trap; do not "fix" it by unticking the object.
+
+**Scenes, canvases and the catalog asset do not exist yet** — this milestone is
+mostly editor work for the user. Bootstrap and MainMenu scenes must be created
+and added to Build Settings alongside BossLevel.
+
+**Next: Milestone 8 (Polish)** — Shader Graph (`_FlashAmount`, `_PhaseTint`,
+`_DissolveAmount`), particle VFX, hit stop, camera shake, per
+`Documentation/DESIGN.md` §16. The shader also resolves the standing conflict
+where `BossTelegraph` and `SpriteFlash` both write `SpriteRenderer.color`.

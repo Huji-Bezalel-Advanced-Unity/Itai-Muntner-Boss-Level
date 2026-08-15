@@ -475,7 +475,7 @@ phase's multipliers. Attacks read from it and never store references to it.
 
 | View | Behaviour |
 |---|---|
-| `BossHealthBar` | Three visually distinct segments matching the phases, so the player can see a transition coming. Drains with a tweened fill plus a delayed "chip" bar for damage legibility. |
+| `BossHealthBar` | Tweened fill plus a delayed "chip" bar trailing behind it, so the size of each hit is legible rather than merely its result. Phase boundaries are shown by static marker images placed at the thresholds — the bar itself stays one continuous fill, which is simpler than three segments and reads the same. |
 | `PlayerHealthView` | Discrete hearts; punch-scale tween on loss. |
 | `PhaseBanner` | Slides in on phase change, holds, slides out. |
 | `EndScreen` | Win and lose variants; staggered fade-in, retry button. |

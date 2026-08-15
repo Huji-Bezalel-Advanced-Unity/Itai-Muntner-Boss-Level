@@ -3,7 +3,9 @@
     "rootNamespace": "BossLevel",
     "references": [
         "Unity.InputSystem",
-        "DOTween.Modules"
+        "DOTween.Modules",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
