@@ -36,11 +36,35 @@ namespace BossLevel.Boss.Attacks
                  "deal damage.")]
         [SerializeField, Min(0f)] private float recoveryDuration = 0.9f;
 
+        [Tooltip("What this attack's wind-up looks like. Give every attack a distinct one — a " +
+                 "warning the player can identify is worth far more than one they can only count.")]
+        [SerializeField] private TelegraphCue telegraphCue = TelegraphCue.Default;
+
         public string DisplayName => displayName;
 
         public float TelegraphDuration => telegraphDuration;
 
         public float RecoveryDuration => recoveryDuration;
+
+        /// <summary>How this attack announces itself before it lands.</summary>
+        public TelegraphCue TelegraphCue => telegraphCue;
+
+        /// <summary>
+        /// Repairs a cue that Unity zero-filled.
+        /// </summary>
+        /// <remarks>
+        /// When a struct field is added to a type, Unity fills it on already-authored assets
+        /// with zeroes rather than running the C# initialiser — which would leave a transparent
+        /// tell with no pulses, i.e. no visible warning at all. Rather than making every asset
+        /// be fixed by hand, they repair themselves on import.
+        /// </remarks>
+        private void OnValidate()
+        {
+            if (!telegraphCue.IsConfigured)
+            {
+                telegraphCue = TelegraphCue.Default;
+            }
+        }
 
         /// <summary>
         /// Performs the attack. The telegraph has already played and the recovery window follows

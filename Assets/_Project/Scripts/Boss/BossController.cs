@@ -43,6 +43,10 @@ namespace BossLevel.Boss
                  "a beat of rest, short enough not to stall the fight.")]
         [SerializeField, Min(0f)] private float phaseTransitionDuration = 1.5f;
 
+        [Tooltip("How the phase change announces itself. Must not resemble any attack's tell, " +
+                 "or the player reads a change of rules as merely another wind-up.")]
+        [SerializeField] private TelegraphCue phaseTransitionCue = TelegraphCue.PhaseTransition;
+
         /// <summary>Raised once, when the boss is defeated.</summary>
         public event Action Defeated;
 
@@ -59,6 +63,18 @@ namespace BossLevel.Boss
         private BossPhaseMachine _phaseMachine;
         private AttackSelector _selector;
         private Coroutine _fightLoop;
+
+        /// <summary>
+        /// Repairs a phase-transition cue that Unity zero-filled when the field was introduced,
+        /// which would otherwise leave the phase change with no visible announcement at all.
+        /// </summary>
+        private void OnValidate()
+        {
+            if (!phaseTransitionCue.IsConfigured)
+            {
+                phaseTransitionCue = TelegraphCue.PhaseTransition;
+            }
+        }
 
         private void Awake()
         {
@@ -139,7 +155,7 @@ namespace BossLevel.Boss
 
                 // Telegraph — the warning. Nothing damaging happens during this window.
                 var telegraphDuration = attack.TelegraphDuration * phase.TelegraphMultiplier;
-                telegraph?.Play(telegraphDuration);
+                telegraph?.Play(attack.TelegraphCue, telegraphDuration);
                 yield return new WaitForSeconds(telegraphDuration);
 
                 // Active — the threat. Yielding the attack's own coroutine runs it inline, so
@@ -173,10 +189,10 @@ namespace BossLevel.Boss
             var phase = CurrentPhase;
             PhaseChanged?.Invoke(phase, _phaseMachine.CurrentIndex);
 
-            // Reusing the wind-up as a "powering up" swell. Milestone 8 replaces this with the
-            // shader's phase tint, which can run alongside the damage flash instead of fighting
-            // it for the sprite's colour.
-            telegraph?.Play(phaseTransitionDuration);
+            // A cue deliberately unlike any attack's: white rather than a hue, several rapid
+            // pulses rather than one swell, and a shudder. A phase change means the rules just
+            // changed, and must not be mistakable for the boss winding up again.
+            telegraph?.Play(phaseTransitionCue, phaseTransitionDuration);
             yield return new WaitForSeconds(phaseTransitionDuration);
 
             health.IsInvulnerable = false;

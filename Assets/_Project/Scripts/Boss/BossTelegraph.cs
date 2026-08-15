@@ -4,29 +4,32 @@ using UnityEngine;
 namespace BossLevel.Boss
 {
     /// <summary>
-    /// The boss's wind-up tell — the visible warning that an attack is about to land.
+    /// Plays the boss's wind-up tells — the visible warnings that something is about to happen.
     /// </summary>
     /// <remarks>
-    /// Kept separate from <see cref="BossController"/> so how the warning *looks* can change
-    /// without touching the rhythm of the fight. The controller owns the timing, because a
-    /// telegraph's length is a fairness guarantee rather than a decoration; this component is
-    /// only asked to make that window visible for exactly as long as it lasts.
+    /// Kept separate from <see cref="BossController"/> so how a warning looks can change without
+    /// touching the rhythm of the fight. The controller owns the timing, because a telegraph's
+    /// length is a fairness guarantee rather than a decoration; this component is only asked to
+    /// fill that window with something the player can read.
+    /// <para>
+    /// What it fills it with comes from the caller as a <see cref="TelegraphCue"/>, so each
+    /// attack looks like itself rather than every attack looking the same.
+    /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public class BossTelegraph : MonoBehaviour
     {
         [SerializeField] private SpriteRenderer target;
 
-        [SerializeField] private Color telegraphColour = new Color(1f, 0.8f, 0.35f);
-
-        [Tooltip("How much the boss swells during the wind-up, as a fraction of its normal size.")]
-        [SerializeField, Range(0f, 0.5f)] private float scalePunch = 0.08f;
-
-        [Tooltip("Fraction of the telegraph spent winding up. The remainder snaps back.")]
+        [Tooltip("Fraction of each pulse spent swelling. The remainder snaps back.")]
         [SerializeField, Range(0.1f, 0.9f)] private float windUpFraction = 0.7f;
+
+        [Tooltip("How jittery the shudder is. Higher is more frantic.")]
+        [SerializeField, Min(1)] private int shakeVibrato = 20;
 
         private Color _baseColour;
         private Vector3 _baseScale;
+        private Vector3 _basePosition;
         private Sequence _sequence;
 
         private void Awake()
@@ -40,13 +43,14 @@ namespace BossLevel.Boss
 
             _baseColour = target.color;
             _baseScale = target.transform.localScale;
+            _basePosition = target.transform.localPosition;
         }
 
         /// <summary>
-        /// Plays a tell lasting exactly <paramref name="duration"/> seconds, replacing any tell
-        /// already running.
+        /// Plays <paramref name="cue"/> across exactly <paramref name="duration"/> seconds,
+        /// replacing anything already running.
         /// </summary>
-        public void Play(float duration)
+        public void Play(TelegraphCue cue, float duration)
         {
             if (!enabled || duration <= 0f)
             {
@@ -55,27 +59,54 @@ namespace BossLevel.Boss
 
             Stop();
 
-            var windUp = duration * windUpFraction;
-            var snapBack = duration - windUp;
+            // Remember where the sprite started, because a shake that is interrupted partway
+            // would otherwise leave the boss permanently nudged off its mark.
+            _basePosition = target.transform.localPosition;
 
-            _sequence = DOTween.Sequence()
-                .Append(target.DOColor(telegraphColour, windUp))
-                .Join(target.transform.DOScale(_baseScale * (1f + scalePunch), windUp))
-                .Append(target.DOColor(_baseColour, snapBack))
-                .Join(target.transform.DOScale(_baseScale, snapBack));
+            var pulses = Mathf.Max(1, cue.Pulses);
+            var pulseDuration = duration / pulses;
+            var swell = pulseDuration * windUpFraction;
+            var settle = pulseDuration - swell;
+
+            var punchedScale = new Vector3(
+                _baseScale.x * (1f + cue.ScalePunch.x),
+                _baseScale.y * (1f + cue.ScalePunch.y),
+                _baseScale.z);
+
+            _sequence = DOTween.Sequence();
+
+            for (var pulse = 0; pulse < pulses; pulse++)
+            {
+                _sequence
+                    .Append(target.DOColor(cue.Colour, swell))
+                    .Join(target.transform.DOScale(punchedScale, swell))
+                    .Append(target.DOColor(_baseColour, settle))
+                    .Join(target.transform.DOScale(_baseScale, settle));
+            }
+
+            if (cue.ShakeStrength > 0f)
+            {
+                // Inserted at zero rather than joined, so it runs across every pulse instead of
+                // only alongside the last one appended.
+                _sequence.Insert(0f, target.transform.DOShakePosition(
+                    duration, cue.ShakeStrength, shakeVibrato, 90f, false, true));
+            }
         }
 
-        /// <summary>Cancels any tell in progress and puts the sprite back as it was.</summary>
+        /// <summary>Cancels whatever is playing and puts the sprite back exactly as it was.</summary>
         public void Stop()
         {
             _sequence?.Kill();
             _sequence = null;
 
-            if (target != null)
+            if (target == null)
             {
-                target.color = _baseColour;
-                target.transform.localScale = _baseScale;
+                return;
             }
+
+            target.color = _baseColour;
+            target.transform.localScale = _baseScale;
+            target.transform.localPosition = _basePosition;
         }
 
         private void OnDisable()

@@ -352,7 +352,7 @@ It also never moves backwards, so healing the boss cannot rewind the fight.
 
 | Beat | What happens | Purpose |
 |---|---|---|
-| Telegraph | Distinct pose and tell; no damage yet | The fairness contract — the player must be able to react |
+| Telegraph | The attack's **own** tell; no damage yet | The fairness contract — the player must be able to react |
 | Active | Projectiles spawn, hitboxes go live | The threat |
 | Recovery | Boss committed and unable to act | The player's damage window |
 | Idle | Cooldown before the next selection | Pacing |
@@ -373,6 +373,24 @@ of being reimplemented — and eventually forgotten — in each attack. And
 difficulty scaling falls out of the architecture: "phase 3 is harder" is
 expressible as shorter telegraph and recovery multipliers on the phase asset,
 applied uniformly to any attack, rather than hand-authored per attack.
+
+### Each attack telegraphs as itself
+
+The controller owns *when* the warning happens; the attack owns *what it looks
+like*, carried as a `TelegraphCue` — colour, pulse count, per-axis swell, and
+shudder strength.
+
+This matters more than it first appears. A single shared tell for every attack
+reduces the telegraph to a countdown: the player learns that *something* is
+coming but not what, so the only available response is to keep moving and hope.
+Distinct tells turn the warning into information — the player can begin moving
+in the right direction before the first projectile exists. That is the
+difference between a fight that is hard and one that is merely fast.
+
+The **phase transition uses a cue deliberately unlike any attack's**: white
+rather than a hue, several rapid pulses rather than one swell, and a shudder. A
+change of rules that looks like another wind-up is not read as a change of rules
+at all.
 
 ### Attack selection
 
@@ -540,7 +558,9 @@ Stated here so they are visibly intentional rather than incidental.
   `_camelCase` for private fields; `camelCase` for locals and parameters. Names
   say what a thing *is* or *does* — no abbreviations that need decoding.
 - **Fields.** `[SerializeField] private` rather than `public`. Inspector-visible
-  without breaking encapsulation.
+  without breaking encapsulation. The one exception is a plain serializable data
+  struct such as `TelegraphCue`, where Unity serializes fields and not
+  properties, so public fields are the only way to expose it in the Inspector.
 - **Documentation.** An XML `<summary>` on every public type and on any member
   whose purpose is not obvious from its name. Comments explain *why*, not *what*
   — the code already says what.
