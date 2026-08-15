@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: effe9965f3ed98c40966e23542d07788, type: 3}
+  m_Name: Phase3
+  m_EditorClassIdentifier: 
+  displayName: Phase3
+  healthThreshold: 0.33
+  attacks:
+  - {fileID: 11400000, guid: 01a9239841068924d9d4c6dad563df26, type: 2}
+  - {fileID: 11400000, guid: 55e6330483a20d84bb82cba8e73a93fe, type: 2}
+  - {fileID: 11400000, guid: 164c5ae58a72dc44ea18ebfc2234edcc, type: 2}
+  - {fileID: 11400000, guid: b3ef47ffb6a666244a61a49153488c9c, type: 2}
+  - {fileID: 11400000, guid: a95128e7981f8c84aa672e1aaa38d83f, type: 2}
+  cooldownRange: {x: 0.4, y: 0.8}
+  telegraphMultiplier: 0.7
+  recoveryMultiplier: 0.7

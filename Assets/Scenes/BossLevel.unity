@@ -824,19 +824,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02d8846d14de25c4da117308c33b463d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  definition: {fileID: 11400000, guid: 3d941c9dcb847a74d8eece25325ae5a8, type: 2}
   health: {fileID: 1000609908}
   projectiles: {fileID: 1906811257}
   muzzle: {fileID: 1871323042}
   player: {fileID: 1157440179}
   telegraph: {fileID: 1000609912}
-  attacks:
-  - {fileID: 11400000, guid: 5f5f402194f0efe4f87436c7e5798819, type: 2}
-  - {fileID: 11400000, guid: 55e6330483a20d84bb82cba8e73a93fe, type: 2}
-  - {fileID: 11400000, guid: 164c5ae58a72dc44ea18ebfc2234edcc, type: 2}
-  - {fileID: 11400000, guid: a95128e7981f8c84aa672e1aaa38d83f, type: 2}
-  - {fileID: 11400000, guid: b3ef47ffb6a666244a61a49153488c9c, type: 2}
   openingDelay: 1.5
-  cooldownRange: {x: 0.5, y: 1.2}
+  phaseTransitionDuration: 1.5
 --- !u!1 &1140637323
 GameObject:
   m_ObjectHideFlags: 0
@@ -885,6 +880,7 @@ GameObject:
   - component: {fileID: 1157440180}
   - component: {fileID: 1157440182}
   - component: {fileID: 1157440181}
+  - component: {fileID: 1157440183}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -1113,6 +1109,71 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxHealth: 100
   currentHealth: 100
+--- !u!114 &1157440183
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1157440173}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 287a02013b9b5ee4488f720f134f44d4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  health: {fileID: 1157440182}
+  sprite: {fileID: 1157440178}
+  invulnerabilityDuration: 1.2
+  blinkInterval: 0.08
+--- !u!1 &1223410839
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1223410841}
+  - component: {fileID: 1223410840}
+  m_Layer: 0
+  m_Name: GameStateMachine
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1223410840
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1223410839}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 652f52fa2a13fbd41a7bdaeeb4f7fafc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  boss: {fileID: 1000609913}
+  playerHealth: {fileID: 1157440182}
+  playerInput: {fileID: 1157440177}
+  introDuration: 1
+  endingDelay: 1.5
+--- !u!4 &1223410841
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1223410839}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.9842464, y: -1.1867036, z: -9.954167}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1496057658
 GameObject:
   m_ObjectHideFlags: 0
@@ -1560,3 +1621,4 @@ SceneRoots:
   - {fileID: 1904951588}
   - {fileID: 1906811258}
   - {fileID: 1000609911}
+  - {fileID: 1223410841}

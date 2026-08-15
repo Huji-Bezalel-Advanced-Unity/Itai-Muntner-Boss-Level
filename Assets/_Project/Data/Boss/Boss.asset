@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f339be0441036a34cadabb07e58d3e55, type: 3}
+  m_Name: Boss
+  m_EditorClassIdentifier: 
+  maxHealth: 300
+  phases:
+  - {fileID: 11400000, guid: 6e9b1c6cb2026a64baf556dab53c0d6c, type: 2}
+  - {fileID: 11400000, guid: 090202e1af0f6f848b07e0bd42894f98, type: 2}
+  - {fileID: 11400000, guid: 192761a0da12e1e47bff76cd04d4dc07, type: 2}
