@@ -11,47 +11,93 @@ namespace BossLevel.Boss
     /// them, so they must never hold references to scene objects. Passing the world in as an
     /// argument is what keeps them stateless.
     /// <para>
-    /// The helpers here exist so an attack reads as its own shape — "fire five shots across a
-    /// sixty degree fan" — rather than as trigonometry mixed with pool plumbing.
+    /// The helpers exist so an attack reads as its own shape — "fire five shots across a sixty
+    /// degree fan" — rather than as trigonometry mixed with pool plumbing.
     /// </para>
     /// </remarks>
     public class BossContext
     {
-        private readonly ProjectilePool _projectiles;
+        /// <summary>
+        /// How many times the intercept estimate is refined. Two is ample for a projectile that
+        /// crosses the arena in well under a second; more would be arithmetic nobody can feel.
+        /// </summary>
+        private const int PredictionRefinements = 2;
 
-        public BossContext(Transform boss, Transform muzzle, Transform player, ProjectilePool projectiles)
+        /// <summary>
+        /// Roughly the player's running speed. Used only as the yardstick for
+        /// <see cref="TargetMobility"/>, so attacks can ask "is this player moving?" without
+        /// each one inventing its own threshold.
+        /// </summary>
+        private const float BriskSpeed = 6f;
+
+        private readonly ProjectilePool _projectiles;
+        private readonly ITarget _target;
+
+        public BossContext(Transform boss, Transform muzzle, ITarget target, ProjectilePool projectiles)
         {
             Boss = boss;
             Muzzle = muzzle;
-            Player = player;
+            _target = target;
             _projectiles = projectiles;
         }
 
-        /// <summary>The boss itself. Useful for attacks anchored to its body rather than its muzzle.</summary>
+        /// <summary>The boss itself. For attacks anchored to its body rather than its muzzle.</summary>
         public Transform Boss { get; }
 
         /// <summary>Where the boss's shots come from.</summary>
         public Transform Muzzle { get; }
 
-        public Transform Player { get; }
+        /// <summary>
+        /// How far ahead of the target to aim: 0 aims where it is, 1 aims where it will be.
+        /// Set from the active phase, so a later boss reads the player better than an early one.
+        /// </summary>
+        public float AimLead { get; set; }
 
         public Vector2 BossPosition => Boss.position;
 
         public Vector2 MuzzlePosition => Muzzle.position;
 
-        public Vector2 PlayerPosition => Player.position;
+        public Vector2 TargetPosition => _target.Position;
+
+        public Vector2 TargetVelocity => _target.Velocity;
+
+        public float TargetSpeed => _target.Velocity.magnitude;
+
+        /// <summary>Whether the target is standing on something — ground attacks depend on it.</summary>
+        public bool TargetIsGrounded => _target.IsGrounded;
+
+        public float DistanceToTarget => Vector2.Distance(MuzzlePosition, TargetPosition);
 
         /// <summary>
-        /// The angle in degrees from the muzzle to the player, measured from world right.
+        /// How mobile the target currently is, from 0 (holding still) to 1 (running flat out).
+        /// Attacks weigh themselves against this when the boss decides what to use.
+        /// </summary>
+        public float TargetMobility => Mathf.InverseLerp(0f, BriskSpeed, TargetSpeed);
+
+        /// <summary>The angle straight at the target's current position, ignoring any lead.</summary>
+        public float AngleToTarget()
+        {
+            return AngleTowards(TargetPosition);
+        }
+
+        /// <summary>
+        /// The point an attack should aim at, blended between where the target is and where it
+        /// is predicted to be by <see cref="AimLead"/>.
         /// </summary>
         /// <remarks>
-        /// Read this at the moment a shot fires, not at the start of the attack, if the attack
-        /// should track the player. Read it once up front if it should not.
+        /// A boss that leads perfectly every time is not fun — it removes movement as an answer
+        /// entirely. Blending gives the fight a dial: an early phase aims sloppily and can be
+        /// walked away from, a late phase aims where the player is going.
         /// </remarks>
-        public float AngleToPlayer()
+        public Vector2 AimPoint()
         {
-            var toPlayer = PlayerPosition - MuzzlePosition;
-            return Mathf.Atan2(toPlayer.y, toPlayer.x) * Mathf.Rad2Deg;
+            return Vector2.Lerp(TargetPosition, PredictedInterceptPoint(), Mathf.Clamp01(AimLead));
+        }
+
+        /// <summary>The angle towards <see cref="AimPoint"/>. What most attacks should fire along.</summary>
+        public float AimAngle()
+        {
+            return AngleTowards(AimPoint());
         }
 
         /// <summary>Fires one projectile from the muzzle along <paramref name="direction"/>.</summary>
@@ -67,8 +113,8 @@ namespace BossLevel.Boss
         }
 
         /// <summary>
-        /// Fires from somewhere other than the muzzle — used by attacks that come from above or
-        /// along the ground rather than out of the boss's body.
+        /// Fires from somewhere other than the muzzle — used by attacks that arrive from above
+        /// or travel along the ground rather than coming out of the boss's body.
         /// </summary>
         public void FireFrom(Vector2 origin, Vector2 direction)
         {
@@ -80,6 +126,42 @@ namespace BossLevel.Boss
         {
             var radians = degrees * Mathf.Deg2Rad;
             return new Vector2(Mathf.Cos(radians), Mathf.Sin(radians));
+        }
+
+        /// <summary>
+        /// Where a shot fired now would meet the target if it kept its current velocity.
+        /// </summary>
+        /// <remarks>
+        /// Guess the flight time from the present distance, move the target by it, then
+        /// re-measure. Each pass tightens the estimate; it converges quickly because the target
+        /// cannot move far compared with how fast the projectile travels.
+        /// </remarks>
+        private Vector2 PredictedInterceptPoint()
+        {
+            var projectileSpeed = _projectiles.ProjectileSpeed;
+            var origin = MuzzlePosition;
+            var position = TargetPosition;
+
+            if (projectileSpeed <= 0f)
+            {
+                return position;
+            }
+
+            var flightTime = Vector2.Distance(origin, position) / projectileSpeed;
+
+            for (var refinement = 0; refinement < PredictionRefinements; refinement++)
+            {
+                var predicted = position + TargetVelocity * flightTime;
+                flightTime = Vector2.Distance(origin, predicted) / projectileSpeed;
+            }
+
+            return position + TargetVelocity * flightTime;
+        }
+
+        private float AngleTowards(Vector2 point)
+        {
+            var toPoint = point - MuzzlePosition;
+            return Mathf.Atan2(toPoint.y, toPoint.x) * Mathf.Rad2Deg;
         }
     }
 }

@@ -71,5 +71,21 @@ namespace BossLevel.Boss.Attacks
         /// automatically, so this covers only the active beat — the part that actually threatens.
         /// </summary>
         public abstract IEnumerator Execute(BossContext context);
+
+        /// <summary>
+        /// How well this attack fits the situation right now, from 0 (pointless) to 1 (ideal).
+        /// </summary>
+        /// <remarks>
+        /// This is where the boss's judgement lives. Cycling attacks at random makes a boss that
+        /// is merely busy; choosing the one that answers what the player is currently doing —
+        /// punishing a camper with something pinpoint, covering a runner's escape routes,
+        /// declining to send a shockwave along the floor at somebody already in the air — is
+        /// what makes it read as a fight rather than as a sprinkler.
+        /// <para>
+        /// The default is deliberately middling, so an attack that has no opinion competes on
+        /// even terms rather than never being picked.
+        /// </para>
+        /// </remarks>
+        public virtual float Suitability(BossContext context) => 0.5f;
     }
 }

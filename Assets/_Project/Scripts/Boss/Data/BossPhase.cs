@@ -41,6 +41,11 @@ namespace BossLevel.Boss.Data
         [Tooltip("Scales every attack's recovery. Below 1 shrinks the player's damage window.")]
         [SerializeField, Range(0.1f, 2f)] private float recoveryMultiplier = 1f;
 
+        [Tooltip("How far ahead of the player the boss aims: 0 fires at where they are, 1 fires " +
+                 "at where they will be. Raise it in later phases so the boss visibly learns to " +
+                 "read the player rather than simply firing faster.")]
+        [SerializeField, Range(0f, 1f)] private float aimLead = 0.5f;
+
         public string DisplayName => displayName;
 
         public float HealthThreshold => healthThreshold;
@@ -52,5 +57,8 @@ namespace BossLevel.Boss.Data
         public float TelegraphMultiplier => telegraphMultiplier;
 
         public float RecoveryMultiplier => recoveryMultiplier;
+
+        /// <summary>How far ahead of the player this phase leads its shots, from 0 to 1.</summary>
+        public float AimLead => aimLead;
     }
 }

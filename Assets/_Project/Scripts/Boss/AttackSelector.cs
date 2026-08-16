@@ -41,8 +41,50 @@ namespace BossLevel.Boss
             _random = random ?? new System.Random();
         }
 
-        /// <summary>Draws the next attack, refilling and reshuffling the bag when it runs dry.</summary>
-        public BossAttack Next()
+        /// <summary>
+        /// Draws the next attack, refilling and reshuffling the bag when it runs dry.
+        /// </summary>
+        /// <param name="context">
+        /// The current situation. When supplied, two candidates are drawn and the one that fits
+        /// better is used — this is what makes the boss appear to choose rather than to cycle.
+        /// Pass null for variety alone.
+        /// </param>
+        public BossAttack Next(BossContext context = null)
+        {
+            var first = DrawFromBag();
+
+            // With no context — or nothing left to weigh it against — variety alone decides.
+            if (context == null || _bag.Count == 0)
+            {
+                return Remember(first);
+            }
+
+            var second = DrawFromBag();
+
+            var chosen = first;
+            var rejected = second;
+
+            if (second.Suitability(context) > first.Suitability(context))
+            {
+                chosen = second;
+                rejected = first;
+            }
+
+            // Judgement must not cost variety: an attack cannot follow itself however well it
+            // fits, because a boss repeating itself reads as broken rather than as decisive.
+            if (chosen == _lastDrawn && rejected != _lastDrawn)
+            {
+                (chosen, rejected) = (rejected, chosen);
+            }
+
+            // The candidate not used goes back into the bag at a random position, so it is still
+            // owed a turn without being predictably next.
+            _bag.Insert(_random.Next(_bag.Count + 1), rejected);
+
+            return Remember(chosen);
+        }
+
+        private BossAttack DrawFromBag()
         {
             if (_bag.Count == 0)
             {
@@ -53,6 +95,11 @@ namespace BossLevel.Boss
             var attack = _bag[lastIndex];
             _bag.RemoveAt(lastIndex);
 
+            return attack;
+        }
+
+        private BossAttack Remember(BossAttack attack)
+        {
             _lastDrawn = attack;
             return attack;
         }

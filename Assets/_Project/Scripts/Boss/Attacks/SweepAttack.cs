@@ -4,29 +4,29 @@ using UnityEngine;
 namespace BossLevel.Boss.Attacks
 {
     /// <summary>
-    /// Sweeps a stream of shots across an arc, forming a moving wall the player must cross.
+    /// Sweeps a stream of shots across an arc, forming a moving wall to cross.
     /// </summary>
     /// <remarks>
     /// The aim is locked once, at the start. A sweep that re-aimed would simply follow the
-    /// player and stop being a pattern to read — the whole point is that it is going somewhere
+    /// player and stop being a pattern to read — the point is that it goes somewhere
     /// predictable and the player has to choose which side of it to be on.
     /// </remarks>
     [CreateAssetMenu(fileName = "Sweep", menuName = "Boss Level/Attacks/Sweep")]
     public class SweepAttack : BossAttack
     {
-        [SerializeField, Min(2)] private int shotCount = 12;
+        [SerializeField, Min(2)] private int shotCount = 14;
 
-        [Tooltip("Total angle covered, centred on where the player was when the sweep began.")]
+        [Tooltip("Total angle covered, centred on where the sweep was aimed when it began.")]
         [SerializeField, Range(0f, 360f)] private float sweepDegrees = 70f;
 
-        [SerializeField, Min(0.05f)] private float duration = 1.2f;
+        [SerializeField, Min(0.05f)] private float duration = 1.1f;
 
-        [Tooltip("Sweep from above the player downwards, rather than from below upwards.")]
+        [Tooltip("Sweep downwards through the player rather than upwards.")]
         [SerializeField] private bool sweepDownwards = true;
 
         public override IEnumerator Execute(BossContext context)
         {
-            var centreAngle = context.AngleToPlayer();
+            var centreAngle = context.AimAngle();
             var halfSweep = sweepDegrees * 0.5f;
 
             var startAngle = centreAngle + (sweepDownwards ? halfSweep : -halfSweep);
@@ -44,6 +44,13 @@ namespace BossLevel.Boss.Attacks
                     yield return new WaitForSeconds(interval);
                 }
             }
+        }
+
+        public override float Suitability(BossContext context)
+        {
+            // Hardest to answer in mid-air, where the player has already committed to an arc and
+            // cannot simply reverse out of the way.
+            return context.TargetIsGrounded ? 0.5f : 1f;
         }
     }
 }

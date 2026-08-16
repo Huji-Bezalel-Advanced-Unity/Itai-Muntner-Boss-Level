@@ -407,6 +407,41 @@ occur.
 `AttackSelector` is a plain C# class with no Unity dependencies, which makes it
 directly unit-testable (§13).
 
+### What makes the boss look intelligent
+
+A boss that cycles attacks at random and fires at where the player currently
+stands is not a fight — it is a sprinkler. Every shot misses a moving player,
+so the strongest strategy becomes standing still and trading damage, which is
+the least interesting thing the player can do. Two mechanisms fix that, and
+neither is a difficulty number.
+
+**Leading the target.** `BossContext` estimates where the player will be when a
+shot arrives: guess the flight time from the current distance, move the player
+by it, re-measure, twice. The `AimLead` value blends between the player's
+present position and that prediction, and it is **set per phase** — an early
+phase aims sloppily and can be walked away from, a late phase aims where the
+player is going. That makes the boss visibly learn to read the player rather
+than merely firing faster, which is a far more interesting form of escalation.
+
+**Judging the situation.** Each attack answers `Suitability(context)` from 0 to
+1, given what the player is doing right now. The selector draws two candidates
+from the shuffle bag and uses the better one, returning the other to the bag so
+variety is preserved.
+
+| Situation | What the boss reaches for |
+|---|---|
+| Standing still, trading shots | `AimedBurst`, `Rain` — pinpoint, punishing |
+| Running | `SpreadShot` — covers the escape routes |
+| Airborne | `Sweep` — a committed arc cannot be steered out of |
+| Grounded | `Slam` — and never while the player is already in the air |
+
+The boss reads the player through an `ITarget` interface exposing position,
+velocity and footing, rather than referencing the player type — so the boss
+depends on what a target *exposes*, not on how the player is built.
+
+The important property is that **the answer to camping is no longer "the boss
+happens to miss"**. It is that camping invites the attacks that do not miss.
+
 ---
 
 ## 8. Data model

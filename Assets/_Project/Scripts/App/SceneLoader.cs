@@ -63,7 +63,16 @@ namespace BossLevel.App
 
                 // Unity's reported progress stops at 0.9 while activation is held, so it is
                 // remapped — otherwise the bar visibly stalls at ninety per cent every time.
-                loadingScreen.SetProgress(Mathf.Clamp01(operation.progress / 0.9f));
+                var loadProgress = Mathf.Clamp01(operation.progress / 0.9f);
+
+                var timeProgress = minimumDisplayTime > 0f
+                    ? Mathf.Clamp01(elapsed / minimumDisplayTime)
+                    : 1f;
+
+                // Whichever is further behind. Scenes this small finish loading within a frame
+                // or two, so reporting the real figure alone would show a full bar immediately
+                // and never animate at all — the time term is what makes it read as loading.
+                loadingScreen.SetProgress(Mathf.Min(loadProgress, timeProgress));
 
                 yield return null;
             }

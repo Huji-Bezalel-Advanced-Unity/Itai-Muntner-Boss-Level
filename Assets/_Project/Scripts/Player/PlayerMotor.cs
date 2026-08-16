@@ -1,4 +1,5 @@
 using System.Collections;
+using BossLevel.Combat;
 using UnityEngine;
 
 namespace BossLevel.Player
@@ -16,7 +17,7 @@ namespace BossLevel.Player
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(Collider2D))]
     [DisallowMultipleComponent]
-    public class PlayerMotor : MonoBehaviour
+    public class PlayerMotor : MonoBehaviour, ITarget
     {
         /// <summary>Below this much input, facing is left alone rather than flipped.</summary>
         private const float FacingDeadzone = 0.01f;
@@ -75,6 +76,15 @@ namespace BossLevel.Player
         /// still, so aiming does not snap back to a default the moment the player stops.
         /// </summary>
         public float Facing { get; private set; } = 1f;
+
+        /// <summary>Where the player is. Part of <see cref="ITarget"/>, read by the boss.</summary>
+        public Vector2 Position => transform.position;
+
+        /// <summary>
+        /// How fast the player is moving. Part of <see cref="ITarget"/>, and what lets the boss
+        /// lead its shots rather than firing at where the player already was.
+        /// </summary>
+        public Vector2 Velocity => _body != null ? _body.linearVelocity : Vector2.zero;
 
         private Vector2 GroundCheckPosition => (Vector2)transform.position + groundCheckOffset;
 

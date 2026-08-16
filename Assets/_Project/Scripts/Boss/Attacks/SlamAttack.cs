@@ -4,7 +4,7 @@ using UnityEngine;
 namespace BossLevel.Boss.Attacks
 {
     /// <summary>
-    /// Sends shockwaves along the ground that the player has to jump over.
+    /// Sends shockwaves along the ground that have to be jumped over.
     /// </summary>
     /// <remarks>
     /// The only attack answered with the jump button rather than by walking, which is what stops
@@ -40,6 +40,13 @@ namespace BossLevel.Boss.Attacks
                     yield return new WaitForSeconds(delayBetweenWaves);
                 }
             }
+        }
+
+        public override float Suitability(BossContext context)
+        {
+            // A wave along the floor is free to ignore if the player is already in the air, so
+            // the boss saves it for when their feet are down.
+            return context.TargetIsGrounded ? 1f : 0.05f;
         }
     }
 }

@@ -93,11 +93,25 @@ namespace BossLevel.Boss
                 return;
             }
 
+            // The boss reads the player through ITarget rather than by type, so it depends on
+            // what a target exposes — position, velocity, footing — and not on how the player
+            // happens to be built.
+            var target = player.GetComponent<ITarget>();
+
+            if (target == null)
+            {
+                Debug.LogError(
+                    $"{player.name} has no {nameof(ITarget)} component, so the boss cannot aim.",
+                    this);
+                enabled = false;
+                return;
+            }
+
             // Health comes from the definition so the boss is described in one place rather than
             // half in an asset and half on a component in the scene.
             health.ResetTo(definition.MaxHealth);
 
-            _context = new BossContext(transform, muzzle, player, projectiles);
+            _context = new BossContext(transform, muzzle, target, projectiles);
             _phaseMachine = new BossPhaseMachine(definition.GetPhaseThresholds());
 
             RebuildSelectorForCurrentPhase();
@@ -150,7 +164,15 @@ namespace BossLevel.Boss
                 }
 
                 var phase = CurrentPhase;
-                var attack = _selector.Next();
+
+                // Set before choosing, so an attack judging itself sees the same aim the boss
+                // will actually use.
+                _context.AimLead = phase.AimLead;
+
+                // Passing the context is what turns selection into judgement: the boss weighs
+                // two candidates against what the player is doing right now instead of simply
+                // taking the next card off the pile.
+                var attack = _selector.Next(_context);
                 CurrentAttack = attack;
 
                 // Telegraph — the warning. Nothing damaging happens during this window.

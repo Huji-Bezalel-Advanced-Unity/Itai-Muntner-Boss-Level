@@ -30,6 +30,11 @@ namespace BossLevel.Combat
         /// <summary>How many projectiles from this pool are currently in the air.</summary>
         public int ActiveCount => _active.Count;
 
+        /// <summary>
+        /// How fast this pool's projectiles travel, so an attack can lead a moving target.
+        /// </summary>
+        public float ProjectileSpeed => prefab != null ? prefab.Speed : 0f;
+
         private void Awake()
         {
             if (prefab == null)

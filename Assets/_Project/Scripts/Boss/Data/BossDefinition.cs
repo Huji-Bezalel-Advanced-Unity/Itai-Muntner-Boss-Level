@@ -42,5 +42,32 @@ namespace BossLevel.Boss.Data
 
             return thresholds;
         }
+
+        /// <summary>
+        /// Warns when the phase thresholds are not in descending order.
+        /// </summary>
+        /// <remarks>
+        /// Out-of-order thresholds do not throw — they simply make the fight jump phases at
+        /// nonsensical moments, or skip straight to the last one on the first frame. That is
+        /// hard to recognise while playing and trivial to spot here.
+        /// </remarks>
+        private void OnValidate()
+        {
+            for (var i = 1; i < phases.Count; i++)
+            {
+                if (phases[i] == null || phases[i - 1] == null)
+                {
+                    continue;
+                }
+
+                if (phases[i].HealthThreshold >= phases[i - 1].HealthThreshold)
+                {
+                    Debug.LogWarning(
+                        $"{name}: phase {i} ({phases[i].name}) has a threshold of " +
+                        $"{phases[i].HealthThreshold}, which is not below phase {i - 1} " +
+                        $"({phases[i - 1].HealthThreshold}). Thresholds must descend.", this);
+                }
+            }
+        }
     }
 }

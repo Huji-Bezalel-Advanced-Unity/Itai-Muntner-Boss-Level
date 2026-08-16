@@ -307,6 +307,26 @@ trap; do not "fix" it by unticking the object.
 mostly editor work for the user. Bootstrap and MainMenu scenes must be created
 and added to Build Settings alongside BossLevel.
 
+**Boss AI and balance pass — written, not yet compiled.** Prompted by play
+testing: the fight ended in seconds, the boss's attacks almost always missed, and
+standing still while holding fire was therefore the strongest strategy.
+
+- `Combat/ITarget` — position, velocity, footing. `PlayerMotor` implements it;
+  the boss resolves it via `GetComponent<ITarget>()` on the player transform, so
+  Boss does not depend on the Player type.
+- `BossContext` — predictive aiming (`AimPoint`, `AimAngle`), `TargetMobility`,
+  `TargetIsGrounded`, and a settable `AimLead` driven from the active phase.
+- `BossAttack.Suitability(context)` — each attack scores how well it fits the
+  current situation. `AttackSelector.Next(context)` draws two candidates and
+  uses the better, returning the other to the bag so variety survives.
+- `BossPhase.AimLead` — escalation now includes the boss aiming better, not just
+  faster. **Existing phase assets deserialise this as 0** (no lead); it must be
+  set by hand.
+- Fixes: loading bar floors progress on elapsed time so it animates on instant
+  loads; quit button exits play mode in the editor; `BossDefinition.OnValidate`
+  warns on non-descending thresholds.
+- `AttackSuitabilityTests` (6) and `StubTarget` in TestSupport.
+
 **Next: Milestone 8 (Polish)** — Shader Graph (`_FlashAmount`, `_PhaseTint`,
 `_DissolveAmount`), particle VFX, hit stop, camera shake, per
 `Documentation/DESIGN.md` §16. The shader also resolves the standing conflict

@@ -59,7 +59,13 @@ namespace BossLevel.UI
 
         private void Quit()
         {
+#if UNITY_EDITOR
+            // Application.Quit does nothing in the editor, which makes the button look broken
+            // during exactly the testing that would catch it being broken.
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
             Application.Quit();
+#endif
         }
     }
 }

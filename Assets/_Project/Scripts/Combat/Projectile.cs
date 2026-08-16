@@ -32,6 +32,12 @@ namespace BossLevel.Combat
         private float _timeAlive;
 
         /// <summary>
+        /// How fast this projectile travels. Attacks read it through the pool so they can work
+        /// out where a moving target will be by the time the shot arrives.
+        /// </summary>
+        public float Speed => speed;
+
+        /// <summary>
         /// Configures the rigidbody and collider correctly when the component is first added,
         /// so a projectile prefab cannot be built subtly wrong.
         /// </summary>
