@@ -31,14 +31,24 @@ namespace BossLevel.Boss
         private const float BriskSpeed = 6f;
 
         private readonly ProjectilePool _projectiles;
+        private readonly HazardPool _hazards;
         private readonly ITarget _target;
+        private readonly LayerMask _sightBlockers;
 
-        public BossContext(Transform boss, Transform muzzle, ITarget target, ProjectilePool projectiles)
+        public BossContext(
+            Transform boss,
+            Transform muzzle,
+            ITarget target,
+            ProjectilePool projectiles,
+            HazardPool hazards,
+            LayerMask sightBlockers)
         {
             Boss = boss;
             Muzzle = muzzle;
             _target = target;
             _projectiles = projectiles;
+            _hazards = hazards;
+            _sightBlockers = sightBlockers;
         }
 
         /// <summary>The boss itself. For attacks anchored to its body rather than its muzzle.</summary>
@@ -73,6 +83,25 @@ namespace BossLevel.Boss
         /// Attacks weigh themselves against this when the boss decides what to use.
         /// </summary>
         public float TargetMobility => Mathf.InverseLerp(0f, BriskSpeed, TargetSpeed);
+
+        /// <summary>
+        /// Whether a shot fired from the muzzle would actually reach the target, or whether
+        /// something solid is in the way.
+        /// </summary>
+        public bool HasLineOfSightToTarget =>
+            Physics2D.Linecast(MuzzlePosition, TargetPosition, _sightBlockers).collider == null;
+
+        /// <summary>
+        /// A multiplier for attacks that have to travel to the target: 1 with a clear shot, low
+        /// when cover is in the way.
+        /// </summary>
+        /// <remarks>
+        /// This is what stops the boss emptying its whole repertoire into the underside of a
+        /// platform. Attacks that must cross the arena discount themselves when they cannot,
+        /// which leaves the ones that do not need a clear line to win the comparison — so
+        /// hiding stops being an answer without the player ever being told it is not.
+        /// </remarks>
+        public float LineOfSightFactor => HasLineOfSightToTarget ? 1f : 0.15f;
 
         /// <summary>The angle straight at the target's current position, ignoring any lead.</summary>
         public float AngleToTarget()
@@ -119,6 +148,21 @@ namespace BossLevel.Boss
         public void FireFrom(Vector2 origin, Vector2 direction)
         {
             _projectiles.Spawn(origin, direction);
+        }
+
+        /// <summary>
+        /// Marks a patch of ground that will strike after a warning. Does nothing, with a
+        /// warning logged, if the boss has no hazard pool wired up.
+        /// </summary>
+        public void SpawnHazard(Vector2 position)
+        {
+            if (_hazards == null)
+            {
+                Debug.LogWarning("An attack asked for a ground hazard but the boss has no hazard pool.");
+                return;
+            }
+
+            _hazards.Spawn(position);
         }
 
         /// <summary>Converts an angle in degrees, measured from world right, into a unit vector.</summary>

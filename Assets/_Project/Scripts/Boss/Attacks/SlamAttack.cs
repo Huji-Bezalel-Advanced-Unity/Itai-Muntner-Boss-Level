@@ -24,6 +24,11 @@ namespace BossLevel.Boss.Attacks
                  "the second still demands one.")]
         [SerializeField, Min(0f)] private float delayBetweenWaves = 0.55f;
 
+        [Tooltip("How far above the wave the player can be and still be considered to be on the " +
+                 "same floor. Standing on a platform puts them above it, where it slides past " +
+                 "harmlessly.")]
+        [SerializeField, Min(0f)] private float sameFloorTolerance = 1.5f;
+
         public override IEnumerator Execute(BossContext context)
         {
             // The boss is anchored on the right, so its shockwaves always travel left into the
@@ -44,9 +49,19 @@ namespace BossLevel.Boss.Attacks
 
         public override float Suitability(BossContext context)
         {
-            // A wave along the floor is free to ignore if the player is already in the air, so
-            // the boss saves it for when their feet are down.
-            return context.TargetIsGrounded ? 1f : 0.05f;
+            // A wave along the floor is free to ignore if the player is already in the air.
+            if (!context.TargetIsGrounded)
+            {
+                return 0.05f;
+            }
+
+            // Standing on a platform counts as grounded but is not on the wave's floor — it
+            // would slide past underneath. Checking the height stops the boss confusing "has
+            // their feet down" with "is somewhere this can reach".
+            var waveHeight = context.BossPosition.y + groundOffset;
+            var heightAboveWave = context.TargetPosition.y - waveHeight;
+
+            return heightAboveWave <= sameFloorTolerance ? 1f : 0.1f;
         }
     }
 }

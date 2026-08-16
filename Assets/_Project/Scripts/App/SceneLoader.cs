@@ -15,6 +15,16 @@ namespace BossLevel.App
     /// </remarks>
     public class SceneLoader : PersistentSingleton<SceneLoader>
     {
+        /// <summary>
+        /// The largest slice of a single frame that counts towards the minimum display time.
+        /// </summary>
+        /// <remarks>
+        /// A hitch — a domain reload, a shader compile, the first frame of play mode — can carry
+        /// a delta of over a second. Counting it in full would spend the whole minimum display
+        /// time in one frame, which is exactly the flash the minimum exists to prevent.
+        /// </remarks>
+        private const float MaxPacingStep = 0.05f;
+
         [SerializeField] private SceneCatalog catalog;
         [SerializeField] private LoadingScreen loadingScreen;
 
@@ -59,7 +69,7 @@ namespace BossLevel.App
 
             while (operation.progress < 0.9f || elapsed < minimumDisplayTime)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += Mathf.Min(Time.unscaledDeltaTime, MaxPacingStep);
 
                 // Unity's reported progress stops at 0.9 while activation is held, so it is
                 // remapped — otherwise the bar visibly stalls at ninety per cent every time.

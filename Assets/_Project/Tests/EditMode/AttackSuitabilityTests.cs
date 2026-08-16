@@ -21,16 +21,27 @@ namespace BossLevel.Tests
         /// <summary>Comfortably above the mobility yardstick, so it reads as "running".</summary>
         private static readonly Vector2 Sprinting = new Vector2(8f, 0f);
 
+        /// <summary>The project's Ground layer, used to stand in for cover.</summary>
+        private const int GroundLayer = 8;
+
         private readonly List<Object> _created = new List<Object>();
 
         private StubTarget _target;
+        private Transform _boss;
+        private Transform _muzzle;
 
         [SetUp]
         public void SetUp()
         {
+            _boss = MakeObject("Boss", new Vector2(6f, 0f)).transform;
+            _muzzle = MakeObject("Muzzle", new Vector2(5f, 0f)).transform;
+
             _target = new StubTarget
             {
-                Position = Vector2.zero,
+                // On the floor the boss's shockwave travels along, which is the boss origin
+                // plus the slam's default ground offset. Sitting exactly on it keeps the
+                // "same floor" check clear of its own tolerance boundary.
+                Position = new Vector2(0f, -1.5f),
                 Velocity = Vector2.zero,
                 IsGrounded = true,
             };
@@ -39,22 +50,20 @@ namespace BossLevel.Tests
         [TearDown]
         public void TearDown()
         {
-            foreach (var asset in _created)
+            foreach (var created in _created)
             {
-                Object.DestroyImmediate(asset);
+                Object.DestroyImmediate(created);
             }
 
             _created.Clear();
         }
 
-        /// <remarks>
-        /// The boss transform, muzzle and pool are left null deliberately: suitability only ever
-        /// consults the target, and supplying the rest would mean building a scene to assert a
-        /// rule that has nothing to do with one.
-        /// </remarks>
-        private BossContext Context()
+        private GameObject MakeObject(string name, Vector2 position)
         {
-            return new BossContext(null, null, _target, null);
+            var created = new GameObject(name);
+            created.transform.position = position;
+            _created.Add(created);
+            return created;
         }
 
         private T MakeAttack<T>() where T : BossAttack
@@ -62,6 +71,17 @@ namespace BossLevel.Tests
             var attack = ScriptableObject.CreateInstance<T>();
             _created.Add(attack);
             return attack;
+        }
+
+        /// <remarks>
+        /// The pools are left null deliberately: suitability never fires anything, so supplying
+        /// them would mean building half a scene to assert a rule that has nothing to do with one.
+        /// The sight mask defaults to nothing, which means every shot has a clear line unless a
+        /// test arranges otherwise.
+        /// </remarks>
+        private BossContext Context(LayerMask sightBlockers = default)
+        {
+            return new BossContext(_boss, _muzzle, _target, null, null, sightBlockers);
         }
 
         [Test]
@@ -77,6 +97,19 @@ namespace BossLevel.Tests
 
             Assert.Greater(grounded, 0.9f, "A shockwave should be the obvious pick on the floor.");
             Assert.Less(airborne, 0.1f, "A player already in the air simply flies over it.");
+        }
+
+        [Test]
+        public void Slam_IsDiscardedAgainstATargetStandingOnARaisedPlatform()
+        {
+            var slam = MakeAttack<SlamAttack>();
+
+            // Grounded, but well above the floor the wave travels along — it would pass by
+            // underneath. Confusing "feet down" with "reachable" is the mistake this prevents.
+            _target.IsGrounded = true;
+            _target.Position = new Vector2(0f, 4f);
+
+            Assert.Less(slam.Suitability(Context()), 0.2f);
         }
 
         [Test]
@@ -141,6 +174,34 @@ namespace BossLevel.Tests
         }
 
         [Test]
+        public void CoverMakesTravellingAttacksYieldToEruption()
+        {
+            var spread = MakeAttack<SpreadShotAttack>();
+            var eruption = MakeAttack<EruptionAttack>();
+
+            // Level with the muzzle, so the sight line runs straight through the blocker rather
+            // than under it.
+            _target.Position = Vector2.zero;
+
+            var wall = MakeObject("Cover", new Vector2(2.5f, 0f));
+            wall.layer = GroundLayer;
+            wall.AddComponent<BoxCollider2D>();
+
+            // Physics queries read cached transforms, which edit mode does not push
+            // automatically after a change.
+            Physics2D.SyncTransforms();
+
+            var blocked = Context(1 << GroundLayer);
+
+            Assert.IsFalse(blocked.HasLineOfSightToTarget, "The wall should block the line.");
+
+            // This is the whole point of the mechanism: with something solid in the way, the
+            // attacks that must cross the arena stand aside for the one that does not, so a
+            // player hiding behind a platform stops being safe.
+            Assert.Greater(eruption.Suitability(blocked), spread.Suitability(blocked));
+        }
+
+        [Test]
         public void EverySuitabilityStaysWithinItsRange()
         {
             var attacks = new BossAttack[]
@@ -150,6 +211,7 @@ namespace BossLevel.Tests
                 MakeAttack<SweepAttack>(),
                 MakeAttack<RainAttack>(),
                 MakeAttack<SlamAttack>(),
+                MakeAttack<EruptionAttack>(),
             };
 
             foreach (var grounded in new[] { true, false })
