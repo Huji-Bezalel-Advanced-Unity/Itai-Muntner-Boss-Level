@@ -23,3 +23,4 @@ MonoBehaviour:
   cooldownRange: {x: 0.4, y: 0.8}
   telegraphMultiplier: 0.7
   recoveryMultiplier: 0.7
+  aimLead: 1

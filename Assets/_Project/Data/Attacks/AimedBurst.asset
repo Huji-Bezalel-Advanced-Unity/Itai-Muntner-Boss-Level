@@ -20,6 +20,6 @@ MonoBehaviour:
     Pulses: 3
     ScalePunch: {x: 0.06, y: 0.06}
     ShakeStrength: 0
-  shotCount: 3
+  shotCount: 4
   delayBetweenShots: 0.18
   aimJitterDegrees: 3
