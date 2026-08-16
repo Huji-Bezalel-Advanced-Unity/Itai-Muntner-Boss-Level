@@ -166,7 +166,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 18
-  damage: 5
+  damage: 1
   lifetime: 3
   hitLayers:
     serializedVersion: 2
