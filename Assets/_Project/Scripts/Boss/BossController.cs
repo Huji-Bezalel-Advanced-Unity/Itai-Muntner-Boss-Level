@@ -35,6 +35,14 @@ namespace BossLevel.Boss
         [Tooltip("Optional. Without it the fight still runs, just with no visible wind-up.")]
         [SerializeField] private BossTelegraph telegraph;
 
+        [Tooltip("Required by attacks that mark the ground rather than shooting at it.")]
+        [SerializeField] private HazardPool hazards;
+
+        [Tooltip("What counts as cover. The boss checks whether it can actually reach the player " +
+                 "before choosing an attack that has to travel there — set this to the ground " +
+                 "and platform layers.")]
+        [SerializeField] private LayerMask sightBlockers;
+
         [Header("Rhythm")]
         [Tooltip("Breathing room before the first attack, so the fight does not open mid-swing.")]
         [SerializeField, Min(0f)] private float openingDelay = 1.5f;
@@ -111,7 +119,7 @@ namespace BossLevel.Boss
             // half in an asset and half on a component in the scene.
             health.ResetTo(definition.MaxHealth);
 
-            _context = new BossContext(transform, muzzle, target, projectiles);
+            _context = new BossContext(transform, muzzle, target, projectiles, hazards, sightBlockers);
             _phaseMachine = new BossPhaseMachine(definition.GetPhaseThresholds());
 
             RebuildSelectorForCurrentPhase();
@@ -138,7 +146,8 @@ namespace BossLevel.Boss
             StopFightLoop();
             telegraph?.Stop();
             CurrentAttack = null;
-            projectiles.DespawnAll();
+
+            ClearTheArena();
         }
 
         private IEnumerator FightLoop()
@@ -203,7 +212,7 @@ namespace BossLevel.Boss
 
             // Clearing the arena is the point of the pause: it stops shots authored for the
             // phase that just ended from landing during the phase that has not started.
-            projectiles.DespawnAll();
+            ClearTheArena();
             telegraph?.Stop();
 
             RebuildSelectorForCurrentPhase();
@@ -238,6 +247,21 @@ namespace BossLevel.Boss
         {
             StopFighting();
             Defeated?.Invoke();
+        }
+
+        /// <summary>
+        /// Removes everything the boss has put into the world. Hazards are included because a
+        /// warning left ticking would otherwise strike during a moment the boss is meant to be
+        /// harmless — the player would take a hit from an attack that no longer exists.
+        /// </summary>
+        private void ClearTheArena()
+        {
+            projectiles.DespawnAll();
+
+            if (hazards != null)
+            {
+                hazards.DespawnAll();
+            }
         }
 
         private void StopFightLoop()

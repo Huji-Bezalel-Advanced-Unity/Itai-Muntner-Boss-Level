@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 namespace BossLevel.App
@@ -14,12 +15,27 @@ namespace BossLevel.App
     [DisallowMultipleComponent]
     public class GameBootstrap : MonoBehaviour
     {
+        /// <summary>
+        /// Frames to let pass before the first load is requested.
+        /// </summary>
+        /// <remarks>
+        /// The first frame after entering play mode carries the whole of start-up in its delta —
+        /// often more than a second. Requesting a load during it means the loading screen's
+        /// minimum display time is already spent before it has drawn once, so the bar appears
+        /// full and the transition cuts straight through. Letting a couple of honest frames pass
+        /// first costs nothing and makes the very first transition behave like every other one.
+        /// </remarks>
+        private const int SettleFrames = 2;
+
         [SerializeField] private SceneId firstScene = SceneId.MainMenu;
 
-        private void Start()
+        private IEnumerator Start()
         {
-            // Start rather than Awake: the services in this scene need their own Awake to have
-            // run before anything asks them to do work.
+            for (var frame = 0; frame < SettleFrames; frame++)
+            {
+                yield return null;
+            }
+
             SceneLoader.Instance.Load(firstScene);
         }
     }

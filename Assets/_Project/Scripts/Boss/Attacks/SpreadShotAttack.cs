@@ -43,8 +43,9 @@ namespace BossLevel.Boss.Attacks
 
         public override float Suitability(BossContext context)
         {
-            // Covering an area is worth most against someone with somewhere to run to.
-            return Mathf.Lerp(0.45f, 1f, context.TargetMobility);
+            // Covering an area is worth most against someone with somewhere to run to — and
+            // worth almost nothing when a platform will absorb the whole fan.
+            return Mathf.Lerp(0.45f, 1f, context.TargetMobility) * context.LineOfSightFactor;
         }
     }
 }

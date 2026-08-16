@@ -49,8 +49,8 @@ namespace BossLevel.Boss.Attacks
         public override float Suitability(BossContext context)
         {
             // Hardest to answer in mid-air, where the player has already committed to an arc and
-            // cannot simply reverse out of the way.
-            return context.TargetIsGrounded ? 0.5f : 1f;
+            // cannot simply reverse out of the way — but it still has to reach them.
+            return (context.TargetIsGrounded ? 0.5f : 1f) * context.LineOfSightFactor;
         }
     }
 }

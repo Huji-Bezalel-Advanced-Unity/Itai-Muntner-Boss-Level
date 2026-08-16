@@ -327,6 +327,27 @@ standing still while holding fire was therefore the strongest strategy.
   warns on non-descending thresholds.
 - `AttackSuitabilityTests` (6) and `StubTarget` in TestSupport.
 
+**Cover pass — written, not yet compiled.** Play testing found the player could
+stand behind a platform and be safe from the entire fight, because every attack
+travelled from the boss to the player.
+
+- `Combat/GroundHazard` + `Combat/HazardPool` — a marked patch of ground that
+  warns then strikes, resolved as one overlap query rather than a trigger.
+- `Boss/Attacks/EruptionAttack` — marks ground beneath the player. Does not
+  travel, so cover is irrelevant to it.
+- `BossContext.HasLineOfSightToTarget` / `LineOfSightFactor` via
+  `Physics2D.Linecast` against a serialized `sightBlockers` mask on
+  `BossController`. Travelling attacks multiply their suitability by it.
+- `SlamAttack` now checks the target's height against the wave's, so standing on
+  a platform no longer counts as being on the wave's floor.
+- `GameBootstrap` waits two frames before the first load; `SceneLoader` clamps
+  its pacing step. The first frame of play mode carries all of start-up in its
+  delta, which was spending the loading screen's minimum display time before it
+  had drawn.
+
+`HazardPool` duplicates `ProjectilePool`'s shape deliberately — a shared generic
+base cannot be a MonoBehaviour, so it would have to be non-generic and cast.
+
 **Next: Milestone 8 (Polish)** — Shader Graph (`_FlashAmount`, `_PhaseTint`,
 `_DissolveAmount`), particle VFX, hit stop, camera shake, per
 `Documentation/DESIGN.md` §16. The shader also resolves the standing conflict

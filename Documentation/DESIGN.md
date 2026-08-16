@@ -442,6 +442,34 @@ depends on what a target *exposes*, not on how the player is built.
 The important property is that **the answer to camping is no longer "the boss
 happens to miss"**. It is that camping invites the attacks that do not miss.
 
+### Cover, and the attack shape that defeats it
+
+Play testing found a second, structural gap: every attack listed above travels
+*from the boss to the player*, so a single platform in between defeats all of
+them at once. A player who found that spot was safe from the entire fight.
+
+Adding more projectile attacks would not have helped — they share the flaw. The
+fix is a different **shape**: `EruptionAttack` marks patches of ground beneath
+the player which erupt after a warning. It does not travel, so geometry is
+irrelevant to it, and it asks a different question — not "which way do I dodge"
+but "are you still where you were a second ago".
+
+It is backed by two mechanisms:
+
+- **`GroundHazard`** resolves as a single overlap query at the instant it
+  strikes rather than as a trigger collider, because a player standing inside it
+  when it activates is the normal case here rather than the edge case, and enter
+  events do not fire for something already there.
+- **Line of sight.** `BossContext.LineOfSightFactor` discounts any attack that
+  has to cross the arena when something solid is in the way. The boss therefore
+  stops emptying its repertoire into the underside of a platform, and the
+  attacks that do not need a clear line win the comparison by default. Hiding
+  stops working without the player ever being told that it has.
+
+`SlamAttack` additionally checks the player's *height*, not just whether their
+feet are down: standing on a raised platform counts as grounded but is not on
+the floor the shockwave travels along.
+
 ---
 
 ## 8. Data model

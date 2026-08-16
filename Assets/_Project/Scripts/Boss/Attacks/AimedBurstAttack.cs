@@ -42,8 +42,8 @@ namespace BossLevel.Boss.Attacks
         public override float Suitability(BossContext context)
         {
             // Pinpoint and relentless, so it is at its best against a player who is holding
-            // still — and nearly wasted on one already sprinting out of the way.
-            return Mathf.Lerp(1f, 0.4f, context.TargetMobility);
+            // still — and nearly wasted on one already sprinting out of the way, or behind cover.
+            return Mathf.Lerp(1f, 0.4f, context.TargetMobility) * context.LineOfSightFactor;
         }
     }
 }
