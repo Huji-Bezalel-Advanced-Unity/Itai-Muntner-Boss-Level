@@ -46,6 +46,10 @@ namespace BossLevel.Boss.Data
                  "read the player rather than simply firing faster.")]
         [SerializeField, Range(0f, 1f)] private float aimLead = 0.5f;
 
+        [Tooltip("Multiplied into the boss's sprite for the whole phase, so the fight escalates " +
+                 "visibly and not only mechanically. White leaves it untouched.")]
+        [SerializeField] private Color tint = Color.white;
+
         public string DisplayName => displayName;
 
         public float HealthThreshold => healthThreshold;
@@ -60,5 +64,20 @@ namespace BossLevel.Boss.Data
 
         /// <summary>How far ahead of the player this phase leads its shots, from 0 to 1.</summary>
         public float AimLead => aimLead;
+
+        /// <summary>The colour the boss takes on for this phase.</summary>
+        public Color Tint => tint;
+
+        /// <summary>
+        /// Repairs a tint that Unity zero-filled when the field was introduced, which would
+        /// otherwise render the boss fully transparent from the first phase change onwards.
+        /// </summary>
+        private void OnValidate()
+        {
+            if (tint.a <= 0f)
+            {
+                tint = Color.white;
+            }
+        }
     }
 }

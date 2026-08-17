@@ -358,7 +358,32 @@ Three concrete pools (`ProjectilePool`, `VolcanoPool`, `MinionPool`) duplicate
 each other's shape deliberately — a shared generic base cannot be a
 MonoBehaviour, so it would have to be non-generic and cast at every call site.
 
-**Next: Milestone 8 (Polish)** — Shader Graph (`_FlashAmount`, `_PhaseTint`,
-`_DissolveAmount`), particle VFX, hit stop, camera shake, per
-`Documentation/DESIGN.md` §16. The shader also resolves the standing conflict
-where `BossTelegraph` and `SpriteFlash` both write `SpriteRenderer.color`.
+**Milestone 8 (Polish) — written, not yet compiled.**
+
+- `Shaders/SpriteEffects.shader` — hand-written URP 2D unlit sprite shader
+  (`LightMode = Universal2D`) with `_FlashAmount`/`_FlashColour`,
+  `_TintAmount`/`_TintColour`, `_PhaseTint`, `_DissolveAmount`. Procedural value
+  noise for the dissolve, so no texture asset is required. **Hand-written HLSL,
+  not Shader Graph** — a `.shadergraph` is generated JSON and cannot be authored
+  from here or reviewed by a grader.
+- `Feel/SpriteEffects` — the only writer of those properties, via
+  `MaterialPropertyBlock`. **If the properties appear to do nothing in play, the
+  fallback is `_renderer.material` instead of a property block** (SRP Batcher
+  interaction).
+- `Feel/HitStop`, `Feel/CameraShake`, `Feel/VfxBurst`, `Feel/VfxPool`.
+- `Feel/DamageFeedback` **replaces `SpriteFlash`** — flash, hit stop, shake and
+  VFX burst, all driven from `Health.Damaged`. Everything but the flash is
+  optional so the same component suits the boss and a minion.
+- `Feel/DeathDissolve` — shake, burst, then dissolve on `Health.Died`.
+- `BossTelegraph` now tints through `SpriteEffects` instead of
+  `SpriteRenderer.color`, **which resolves the long-standing conflict** where a
+  hit during a wind-up was overwritten and never showed.
+- `BossPhase.Tint` (with `OnValidate` repair, since Unity zero-fills it to
+  transparent) applied by `BossController`, plus a hard camera shake on phase
+  change.
+
+All feel tweens use `SetUpdate(true)`; on scaled time they would freeze during
+the hit stop they accompany.
+
+**Next: Milestone 9 (Build)** — WebGL build, GitHub Pages hosting, final
+documentation pass. Per `Documentation/DESIGN.md` §14 and §16.

@@ -3,6 +3,7 @@ using System.Collections;
 using BossLevel.Boss.Attacks;
 using BossLevel.Boss.Data;
 using BossLevel.Combat;
+using BossLevel.Feel;
 using UnityEngine;
 
 namespace BossLevel.Boss
@@ -34,6 +35,15 @@ namespace BossLevel.Boss
 
         [Tooltip("Optional. Without it the fight still runs, just with no visible wind-up.")]
         [SerializeField] private BossTelegraph telegraph;
+
+        [Tooltip("Optional. Applies each phase's tint to the boss as the fight escalates.")]
+        [SerializeField] private SpriteEffects bossSprite;
+
+        [Tooltip("Optional. Shaken hard when a phase turns over — the two moments in the fight " +
+                 "that change its rules deserve more than the nudge an ordinary hit gets.")]
+        [SerializeField] private CameraShake cameraShake;
+
+        [SerializeField, Min(0f)] private float phaseShakeStrength = 0.35f;
 
         [Tooltip("Required by attacks that open vents in the ground rather than shooting at it.")]
         [SerializeField] private VolcanoPool volcanoes;
@@ -222,6 +232,17 @@ namespace BossLevel.Boss
             RebuildSelectorForCurrentPhase();
 
             var phase = CurrentPhase;
+
+            if (bossSprite != null)
+            {
+                bossSprite.SetPhaseTint(phase.Tint);
+            }
+
+            if (cameraShake != null)
+            {
+                cameraShake.Play(phaseShakeStrength, phaseTransitionDuration * 0.5f);
+            }
+
             PhaseChanged?.Invoke(phase, _phaseMachine.CurrentIndex);
 
             // A cue deliberately unlike any attack's: white rather than a hue, several rapid

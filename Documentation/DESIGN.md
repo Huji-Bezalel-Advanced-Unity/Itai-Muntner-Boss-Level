@@ -567,17 +567,31 @@ fight is fully functional in a scene with no canvas — useful when testing.
 
 ### Shader
 
-One Shader Graph, `SpriteEffects`, applied to the boss and player sprites,
-exposing three properties:
+One shader, `Boss Level/Sprite Effects`, applied to the boss and player sprites:
 
 | Property | Use |
 |---|---|
-| `_FlashAmount` | White-out on hit; driven by a short tween |
-| `_PhaseTint` | Colour shift as phases escalate |
-| `_DissolveAmount` | Death dissolve, driven over ~1s on defeat |
+| `_FlashAmount` / `_FlashColour` | White-out on a hit; driven by a short tween |
+| `_TintAmount` / `_TintColour` | The attack wind-up tell |
+| `_PhaseTint` | Persistent colour shift as the phases escalate |
+| `_DissolveAmount` | Death, burned away over about a second |
 
-Serving three effects from one shader keeps the material count low and the
-graph comprehensible, rather than three near-identical graphs.
+**Serving all of them from one shader is what makes them compose.** Before this
+existed, the damage flash and the attack telegraph both wrote
+`SpriteRenderer.color`, so whichever ran second erased the other and a hit
+landing during a wind-up did not read at all. As separate properties applied in
+a defined order — phase tint, then telegraph, then flash — the boss can flash
+white while still glowing with whatever it is about to do.
+
+**Written by hand in HLSL rather than in Shader Graph.** A `.shadergraph` file
+is generated JSON: it cannot be read, reviewed, or sensibly diffed, and on a
+project graded largely on readability that is a poor trade for a effect that
+fits on one page. The dissolve uses procedural value noise rather than a texture,
+so it depends on no authored asset that could go missing.
+
+`Feel/SpriteEffects` is the only thing that writes those properties, and it does
+so through a `MaterialPropertyBlock` so each sprite holds its own values without
+instantiating a copy of the material.
 
 ### VFX
 
@@ -593,11 +607,24 @@ submitted build.
 
 The 10% for juice is cheap to earn and worth doing last, once the fight works.
 
-- **Hit stop** — a very brief freeze on impactful hits, run on unscaled time so
-  it cannot deadlock itself.
-- **Camera shake** — small on player hits, large on boss phase change and death.
-- **Damage flash** — via `_FlashAmount` above.
-- **Squash and stretch** on jump and land, via tween.
+- **`HitStop`** — a freeze of about 45ms on a hit. The cheapest effect in the
+  project and one of the most effective: a hit with no pause reads as a number
+  changing, while the same hit followed by a moment of stillness reads as
+  weight. Everything in it runs on unscaled time, because waiting on scaled time
+  while time is stopped is a coroutine that never resumes.
+- **`CameraShake`** — a nudge on ordinary damage, and the rest saved for the two
+  moments that change the fight: a phase turning over and the boss dying. If
+  every hit shakes the screen hard then none of them does.
+- **`DamageFeedback`** — gathers flash, freeze, shake and burst into one place,
+  because feedback belongs to the thing *being* hit rather than to whatever hit
+  it. A projectile should not have to know whether its target shakes the screen.
+- **`DeathDissolve`** — a boss that vanishes on its last hit ends the fight
+  without marking it.
+- **`VfxBurst` / `VfxPool`** — pooled one-shot particle bursts, using the
+  built-in Particle System (§10, VFX).
+
+Every tween here runs unscaled, so effects keep animating through the hit stop
+that accompanies them rather than freezing at full white until time resumes.
 
 ---
 
