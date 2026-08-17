@@ -4904,3 +4904,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e133b15229de73b4bbc6ca0f35847827, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  particleCount: 14
+  emissionRadius: 0.35
+  lifetime: 0.35
+  speed: 5
+  size: 0.16
+  gravity: 0.7
+  particleMaterial: {fileID: 2100000, guid: 9dedca82a14fc3c4c82815e4989a3852, type: 2}
+  sortingLayerName: Default
+  sortingOrder: 100
