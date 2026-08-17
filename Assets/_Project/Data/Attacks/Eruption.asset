@@ -13,13 +13,14 @@ MonoBehaviour:
   m_Name: Eruption
   m_EditorClassIdentifier: 
   displayName: Attack
-  telegraphDuration: 0.7
+  telegraphDuration: 0.3
   recoveryDuration: 0.9
   telegraphCue:
     Colour: {r: 0.7207546, g: 0.3499211, b: 0, a: 1}
     Pulses: 2
     ScalePunch: {x: 0.15, y: -0.1}
     ShakeStrength: 0.2
-  eruptionCount: 4
-  delayBetweenEruptions: 0.4
-  scatter: 1.2
+  ventCount: 3
+  delayBetweenVents: 0.8
+  scatter: 1.5
+  groundOffset: -4
