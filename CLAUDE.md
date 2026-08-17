@@ -385,5 +385,19 @@ MonoBehaviour, so it would have to be non-generic and cast at every call site.
 All feel tweens use `SetUpdate(true)`; on scaled time they would freeze during
 the hit stop they accompany.
 
+Two follow-up fixes after play testing:
+
+- **Never declare `_MainTex_ST` (or `_TexelSize`) in `UnityPerMaterial`** in a 2D
+  sprite shader. Sprite scale/offset is per-renderer data, and declaring it makes
+  the material incompatible with the 2D SRP Batcher — Unity warns and disables
+  batching for every renderer using it. Sprite UVs arrive correct, so there is
+  nothing to transform.
+- **`VfxBurst` configures its entire particle system in `Awake`** rather than
+  trusting the prefab. Particle System defaults suit 3D — the default Cone shape
+  fires along +Z, into the screen — so an unconfigured system in a 2D scene looks
+  broken rather than plain. It still needs a **material assigned**, because
+  Unity's built-in particle material renders magenta under URP; it logs a warning
+  if that is missing.
+
 **Next: Milestone 9 (Build)** — WebGL build, GitHub Pages hosting, final
 documentation pass. Per `Documentation/DESIGN.md` §14 and §16.

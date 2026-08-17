@@ -76,8 +76,12 @@ Shader "Boss Level/Sprite Effects"
             TEXTURE2D(_MainTex);
             SAMPLER(sampler_MainTex);
 
+            // _MainTex_ST is deliberately absent. Sprite texture scale and offset are
+            // per-renderer data in 2D, and declaring them here makes the material incompatible
+            // with the 2D SRP Batcher — Unity warns and silently disables batching for every
+            // renderer using it. Sprite UVs already arrive correct, so there is nothing to
+            // transform.
             CBUFFER_START(UnityPerMaterial)
-                float4 _MainTex_ST;
                 float4 _Color;
                 float4 _FlashColour;
                 float  _FlashAmount;
@@ -121,7 +125,7 @@ Shader "Boss Level/Sprite Effects"
                 Varyings output;
 
                 output.positionHCS = TransformObjectToHClip(input.positionOS);
-                output.uv = TRANSFORM_TEX(input.uv, _MainTex);
+                output.uv = input.uv;
                 output.colour = input.colour;
 
                 return output;
