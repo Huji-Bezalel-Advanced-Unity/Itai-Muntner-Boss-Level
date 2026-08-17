@@ -327,26 +327,36 @@ standing still while holding fire was therefore the strongest strategy.
   warns on non-descending thresholds.
 - `AttackSuitabilityTests` (6) and `StubTarget` in TestSupport.
 
-**Cover pass — written, not yet compiled.** Play testing found the player could
-stand behind a platform and be safe from the entire fight, because every attack
-travelled from the boss to the player.
+**Cover pass — done.** Line of sight, and an attack shape that does not travel.
 
-- `Combat/GroundHazard` + `Combat/HazardPool` — a marked patch of ground that
-  warns then strikes, resolved as one overlap query rather than a trigger.
-- `Boss/Attacks/EruptionAttack` — marks ground beneath the player. Does not
-  travel, so cover is irrelevant to it.
-- `BossContext.HasLineOfSightToTarget` / `LineOfSightFactor` via
-  `Physics2D.Linecast` against a serialized `sightBlockers` mask on
-  `BossController`. Travelling attacks multiply their suitability by it.
-- `SlamAttack` now checks the target's height against the wave's, so standing on
-  a platform no longer counts as being on the wave's floor.
-- `GameBootstrap` waits two frames before the first load; `SceneLoader` clamps
-  its pacing step. The first frame of play mode carries all of start-up in its
-  delta, which was spending the loading screen's minimum display time before it
-  had drawn.
+**Platforms removed, dash and minions added — written, not yet compiled.** The
+user removed the platforms entirely (they were total cover against every attack)
+and asked for a double jump, a dash, minions, and a volcano-style eruption.
 
-`HazardPool` duplicates `ProjectilePool`'s shape deliberately — a shared generic
-base cannot be a MonoBehaviour, so it would have to be non-generic and cast.
+- **Platforms and all drop-through code are gone.** `PlayerInputReader` no
+  longer reads `Crouch`; dash is bound to the template's **`Sprint`** action
+  (Left Shift).
+- `PlayerMotor` gained `airJumps` (double jump) and a dash: short, unsteerable,
+  one per trip through the air, granting invulnerability. The file is over the
+  200-line guideline on purpose — running, jumping and dashing all write the
+  same rigidbody in the same fixed step, and splitting them would mean separate
+  components racing to set velocity.
+- **`Health` invulnerability is now counted, not a bool.** `HoldInvulnerability`
+  / `ReleaseInvulnerability`. The dash and the hit frames can both be active,
+  and with a flag whichever ended first stripped the other's protection.
+  `IsInvulnerable` is now read-only — do not reintroduce a setter.
+- `Combat/VolcanoHazard` + `VolcanoPool` **replace** `GroundHazard` +
+  `HazardPool`. Ground marker warns for 2s+, then a column rises and damages
+  only the part that has actually risen.
+- `Combat/Minion` + `MinionPool` — slow pursuers with their own `Health`, which
+  burst on contact. `MinionPool.ActiveCount` feeds the summon attack's
+  suitability so the arena fills to a pressure and stops.
+- `Boss/Attacks/SummonMinionsAttack`; `EruptionAttack` rewritten for vents.
+- `BossContext` constructor now takes `VolcanoPool` and `MinionPool`.
+
+Three concrete pools (`ProjectilePool`, `VolcanoPool`, `MinionPool`) duplicate
+each other's shape deliberately — a shared generic base cannot be a
+MonoBehaviour, so it would have to be non-generic and cast at every call site.
 
 **Next: Milestone 8 (Polish)** — Shader Graph (`_FlashAmount`, `_PhaseTint`,
 `_DissolveAmount`), particle VFX, hit stop, camera shake, per

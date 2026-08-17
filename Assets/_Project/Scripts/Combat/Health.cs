@@ -29,6 +29,8 @@ namespace BossLevel.Combat
         /// <summary>Raised exactly once, the moment health first reaches zero.</summary>
         public event Action Died;
 
+        private int _invulnerabilityHolds;
+
         public int Current => currentHealth;
 
         public int Max => maxHealth;
@@ -38,11 +40,31 @@ namespace BossLevel.Combat
         /// <summary>Remaining health from 0 to 1. Convenient for bars and for phase thresholds.</summary>
         public float Fraction => maxHealth <= 0 ? 0f : (float)Current / maxHealth;
 
+        /// <summary>Whether damage is currently being ignored.</summary>
+        public bool IsInvulnerable => _invulnerabilityHolds > 0;
+
         /// <summary>
-        /// While true, damage is ignored. Used for player invulnerability frames and to make the
-        /// boss untouchable during a phase transition.
+        /// Adds one reason to ignore damage. Every call must be matched by
+        /// <see cref="ReleaseInvulnerability"/>.
         /// </summary>
-        public bool IsInvulnerable { get; set; }
+        /// <remarks>
+        /// Counted rather than a simple flag because more than one system can want
+        /// invulnerability at the same moment and none of them knows about the others. A player
+        /// hit at the start of a dash holds it twice — once for the dash, once for the hit
+        /// frames — and with a flag whichever finished first would strip the protection the
+        /// other was still relying on, producing a rare unfair death that is near impossible to
+        /// reproduce on purpose.
+        /// </remarks>
+        public void HoldInvulnerability()
+        {
+            _invulnerabilityHolds++;
+        }
+
+        /// <summary>Removes one reason to ignore damage.</summary>
+        public void ReleaseInvulnerability()
+        {
+            _invulnerabilityHolds = Mathf.Max(0, _invulnerabilityHolds - 1);
+        }
 
         private void Awake()
         {
@@ -77,7 +99,7 @@ namespace BossLevel.Combat
         {
             maxHealth = Mathf.Max(1, newMax);
             currentHealth = maxHealth;
-            IsInvulnerable = false;
+            _invulnerabilityHolds = 0;
             Changed?.Invoke(currentHealth, maxHealth);
         }
 

@@ -1,21 +1,25 @@
-using System.Collections;
 using BossLevel.Combat;
 using UnityEngine;
 
 namespace BossLevel.Player
 {
     /// <summary>
-    /// Turns movement intent into physics: running, jumping, and dropping through one-way
-    /// platforms.
+    /// Turns movement intent into physics: running, jumping, double jumping and dashing.
     /// </summary>
     /// <remarks>
     /// Input edges are sampled in <see cref="Update"/>, because a button-down is only true for a
     /// single rendered frame and would be missed at the physics rate. Everything that touches the
     /// rigidbody happens in <see cref="FixedUpdate"/>, so movement does not change with frame
     /// rate.
+    /// <para>
+    /// This file is longer than the project's usual guideline, and deliberately so: running,
+    /// jumping and dashing are one responsibility — how the player moves — and all three write
+    /// to the same rigidbody in the same fixed step. Splitting them would mean separate
+    /// components competing to set velocity, and working out which one won on a given frame is
+    /// far harder to follow than reading them in order here.
+    /// </para>
     /// </remarks>
     [RequireComponent(typeof(Rigidbody2D))]
-    [RequireComponent(typeof(Collider2D))]
     [DisallowMultipleComponent]
     public class PlayerMotor : MonoBehaviour, ITarget
     {
@@ -25,6 +29,9 @@ namespace BossLevel.Player
         [Header("Dependencies")]
         [SerializeField] private PlayerInputReader input;
 
+        [Tooltip("Optional. Only needed so a dash can grant invulnerability.")]
+        [SerializeField] private Health health;
+
         [Header("Running")]
         [SerializeField] private float moveSpeed = 8f;
 
@@ -32,6 +39,9 @@ namespace BossLevel.Player
         [Tooltip("Upward speed applied on jump. Set directly rather than as an impulse so a " +
                  "jump taken while falling reaches the same height as one from rest.")]
         [SerializeField] private float jumpSpeed = 14f;
+
+        [Tooltip("Jumps available after leaving the ground. One gives the usual double jump.")]
+        [SerializeField, Min(0)] private int airJumps = 1;
 
         [Tooltip("Gravity while rising. Lower than falling gravity, which makes the jump feel " +
                  "floaty at the top and weighty on the way down.")]
@@ -49,24 +59,36 @@ namespace BossLevel.Player
         [Tooltip("How long before landing a jump press is remembered and fired on touchdown.")]
         [SerializeField] private float jumpBufferTime = 0.1f;
 
+        [Header("Dashing")]
+        [SerializeField] private float dashSpeed = 22f;
+
+        [Tooltip("Short on purpose. A dash is a commitment to a moment, not a means of travel.")]
+        [SerializeField, Min(0.02f)] private float dashDuration = 0.16f;
+
+        [SerializeField, Min(0f)] private float dashCooldown = 0.6f;
+
+        [Tooltip("Whether a dash passes through damage. This is what makes reading a telegraph " +
+                 "correctly worth something, rather than retreating always being the safest play.")]
+        [SerializeField] private bool dashGrantsInvulnerability = true;
+
         [Header("Ground detection")]
         [SerializeField] private Vector2 groundCheckOffset = new Vector2(0f, -0.5f);
         [SerializeField] private float groundCheckRadius = 0.15f;
         [SerializeField] private LayerMask groundLayers = ~0;
 
-        [Header("Dropping through platforms")]
-        [SerializeField] private float dropThroughProbeDistance = 1f;
-
-        [Tooltip("Safety net only. Collision normally returns as soon as the player is clear.")]
-        [SerializeField] private float dropThroughTimeout = 0.6f;
-
         private Rigidbody2D _body;
-        private Collider2D _collider;
 
         private float _timeSinceGrounded = float.PositiveInfinity;
         private float _timeSinceJumpPressed = float.PositiveInfinity;
-        private bool _isJumping;
-        private Collider2D _platformBeingDroppedThrough;
+        private int _airJumpsUsed;
+        private bool _canCutJump;
+
+        private bool _isDashing;
+        private bool _airDashUsed;
+        private float _dashEndsAt;
+        private float _dashReadyAt;
+        private float _dashDirection = 1f;
+        private bool _holdingDashInvulnerability;
 
         /// <summary>Whether the player is currently standing on something.</summary>
         public bool IsGrounded { get; private set; }
@@ -76,6 +98,9 @@ namespace BossLevel.Player
         /// still, so aiming does not snap back to a default the moment the player stops.
         /// </summary>
         public float Facing { get; private set; } = 1f;
+
+        /// <summary>True for the brief window of a dash. Shooting and aiming can read it.</summary>
+        public bool IsDashing => _isDashing;
 
         /// <summary>Where the player is. Part of <see cref="ITarget"/>, read by the boss.</summary>
         public Vector2 Position => transform.position;
@@ -90,7 +115,7 @@ namespace BossLevel.Player
 
         /// <summary>
         /// Configures sensible rigidbody defaults when this component is first added in the
-        /// editor, so the player cannot tip over or tunnel through platforms at speed.
+        /// editor, so the player cannot tip over or tunnel through geometry at speed.
         /// </summary>
         private void Reset()
         {
@@ -104,7 +129,6 @@ namespace BossLevel.Player
         private void Awake()
         {
             _body = GetComponent<Rigidbody2D>();
-            _collider = GetComponent<Collider2D>();
 
             if (input == null)
             {
@@ -115,9 +139,8 @@ namespace BossLevel.Player
 
         private void OnDisable()
         {
-            // If control is taken away mid-drop, restore the collision we suppressed. Otherwise
-            // the player would keep falling through that platform once re-enabled.
-            RestoreDropThroughCollision();
+            // Losing control mid-dash must not leave the player permanently untouchable.
+            EndDash();
         }
 
         private void Update()
@@ -129,15 +152,29 @@ namespace BossLevel.Player
                 _timeSinceJumpPressed = 0f;
             }
 
-            if (input.DropThroughPressed)
+            if (input.DashPressed)
             {
-                TryDropThrough();
+                TryStartDash();
             }
         }
 
         private void FixedUpdate()
         {
             UpdateGrounded();
+
+            if (_isDashing)
+            {
+                if (Time.time < _dashEndsAt)
+                {
+                    // A dash overrides gravity and steering entirely. Being unable to correct
+                    // mid-dash is what makes committing to one a decision.
+                    _body.linearVelocity = new Vector2(_dashDirection * dashSpeed, 0f);
+                    return;
+                }
+
+                EndDash();
+            }
+
             ApplyHorizontalMovement();
             ApplyJump();
             ApplyGravity();
@@ -148,11 +185,13 @@ namespace BossLevel.Player
             IsGrounded = Physics2D.OverlapCircle(GroundCheckPosition, groundCheckRadius, groundLayers) != null;
             _timeSinceGrounded = IsGrounded ? 0f : _timeSinceGrounded + Time.fixedDeltaTime;
 
-            // Landing ends the jump. Checking downward velocity avoids ending it on the frame
-            // the jump starts, while the ground check still overlaps.
+            // Checking downward velocity avoids resetting on the frame a jump starts, while the
+            // ground check still overlaps what was just left.
             if (IsGrounded && _body.linearVelocity.y <= 0f)
             {
-                _isJumping = false;
+                _airJumpsUsed = 0;
+                _airDashUsed = false;
+                _canCutJump = false;
             }
         }
 
@@ -173,32 +212,46 @@ namespace BossLevel.Player
 
         private void ApplyJump()
         {
-            var withinCoyoteTime = _timeSinceGrounded <= coyoteTime;
             var jumpWasBuffered = _timeSinceJumpPressed <= jumpBufferTime;
 
-            if (withinCoyoteTime && jumpWasBuffered && !_isJumping)
+            if (jumpWasBuffered)
             {
-                var velocity = _body.linearVelocity;
-                velocity.y = jumpSpeed;
-                _body.linearVelocity = velocity;
+                var canJumpFromGround = _timeSinceGrounded <= coyoteTime;
+                var canJumpFromAir = _airJumpsUsed < airJumps;
 
-                _isJumping = true;
+                if (canJumpFromGround || canJumpFromAir)
+                {
+                    if (!canJumpFromGround)
+                    {
+                        _airJumpsUsed++;
+                    }
 
-                // Consume both windows so one press cannot produce two jumps.
-                _timeSinceJumpPressed = float.PositiveInfinity;
-                _timeSinceGrounded = float.PositiveInfinity;
-                return;
+                    PerformJump();
+                    return;
+                }
             }
 
-            if (_isJumping && !input.JumpHeld && _body.linearVelocity.y > 0f)
+            if (_canCutJump && !input.JumpHeld && _body.linearVelocity.y > 0f)
             {
                 var velocity = _body.linearVelocity;
                 velocity.y *= shortJumpCut;
                 _body.linearVelocity = velocity;
 
-                // Clearing the flag also means the cut happens once, not every frame of the rise.
-                _isJumping = false;
+                _canCutJump = false;
             }
+        }
+
+        private void PerformJump()
+        {
+            var velocity = _body.linearVelocity;
+            velocity.y = jumpSpeed;
+            _body.linearVelocity = velocity;
+
+            _canCutJump = true;
+
+            // Consume both windows so one press cannot produce two jumps.
+            _timeSinceJumpPressed = float.PositiveInfinity;
+            _timeSinceGrounded = float.PositiveInfinity;
         }
 
         private void ApplyGravity()
@@ -206,64 +259,51 @@ namespace BossLevel.Player
             _body.gravityScale = _body.linearVelocity.y > 0f ? riseGravity : fallGravity;
         }
 
-        private void TryDropThrough()
+        private void TryStartDash()
         {
-            if (!IsGrounded || _platformBeingDroppedThrough != null)
+            if (_isDashing || Time.time < _dashReadyAt)
             {
                 return;
             }
 
-            var hit = Physics2D.Raycast(
-                GroundCheckPosition, Vector2.down, dropThroughProbeDistance, groundLayers);
-
-            if (hit.collider == null)
+            // One dash per trip through the air, so it cannot be chained into flight.
+            if (!IsGrounded)
             {
-                return;
+                if (_airDashUsed)
+                {
+                    return;
+                }
+
+                _airDashUsed = true;
             }
 
-            // Only one-way platforms can be dropped through, and a PlatformEffector2D is what
-            // makes a platform one-way. Testing for it means solid ground is rejected without
-            // needing a dedicated layer or a marker component.
-            if (!hit.collider.TryGetComponent<PlatformEffector2D>(out _))
-            {
-                return;
-            }
+            var steer = input.HorizontalMove;
+            _dashDirection = Mathf.Abs(steer) > FacingDeadzone ? Mathf.Sign(steer) : Facing;
+            Facing = _dashDirection;
 
-            StartCoroutine(DropThrough(hit.collider));
+            _isDashing = true;
+            _dashEndsAt = Time.time + dashDuration;
+            _dashReadyAt = _dashEndsAt + dashCooldown;
+
+            if (dashGrantsInvulnerability && health != null)
+            {
+                health.HoldInvulnerability();
+                _holdingDashInvulnerability = true;
+            }
         }
 
-        private IEnumerator DropThrough(Collider2D platform)
+        private void EndDash()
         {
-            _platformBeingDroppedThrough = platform;
+            _isDashing = false;
 
-            // Suppressing this one pair leaves the platform solid for everything else, unlike
-            // disabling its collider.
-            Physics2D.IgnoreCollision(_collider, platform, true);
-
-            var elapsed = 0f;
-
-            // Position is the real condition: hold the suppression until the player is fully
-            // below the platform, so collision cannot be restored while still overlapping it.
-            // The timeout is only a safety net against a missed frame leaving the player able to
-            // fall through the world forever.
-            while (elapsed < dropThroughTimeout && _collider.bounds.max.y > platform.bounds.min.y)
-            {
-                elapsed += Time.deltaTime;
-                yield return null;
-            }
-
-            RestoreDropThroughCollision();
-        }
-
-        private void RestoreDropThroughCollision()
-        {
-            if (_platformBeingDroppedThrough == null)
+            if (!_holdingDashInvulnerability)
             {
                 return;
             }
 
-            Physics2D.IgnoreCollision(_collider, _platformBeingDroppedThrough, false);
-            _platformBeingDroppedThrough = null;
+            // Released rather than cleared, so hit-frames running at the same time survive.
+            health.ReleaseInvulnerability();
+            _holdingDashInvulnerability = false;
         }
 
         private void OnDrawGizmosSelected()

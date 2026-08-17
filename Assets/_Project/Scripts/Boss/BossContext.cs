@@ -31,7 +31,8 @@ namespace BossLevel.Boss
         private const float BriskSpeed = 6f;
 
         private readonly ProjectilePool _projectiles;
-        private readonly HazardPool _hazards;
+        private readonly VolcanoPool _volcanoes;
+        private readonly MinionPool _minions;
         private readonly ITarget _target;
         private readonly LayerMask _sightBlockers;
 
@@ -40,14 +41,16 @@ namespace BossLevel.Boss
             Transform muzzle,
             ITarget target,
             ProjectilePool projectiles,
-            HazardPool hazards,
+            VolcanoPool volcanoes,
+            MinionPool minions,
             LayerMask sightBlockers)
         {
             Boss = boss;
             Muzzle = muzzle;
             _target = target;
             _projectiles = projectiles;
-            _hazards = hazards;
+            _volcanoes = volcanoes;
+            _minions = minions;
             _sightBlockers = sightBlockers;
         }
 
@@ -150,19 +153,33 @@ namespace BossLevel.Boss
             _projectiles.Spawn(origin, direction);
         }
 
+        /// <summary>How many of the boss's minions are currently alive and hunting.</summary>
+        public int ActiveMinionCount => _minions != null ? _minions.ActiveCount : 0;
+
         /// <summary>
-        /// Marks a patch of ground that will strike after a warning. Does nothing, with a
-        /// warning logged, if the boss has no hazard pool wired up.
+        /// Opens a volcanic vent on the ground, which erupts upwards after its own warning.
         /// </summary>
-        public void SpawnHazard(Vector2 position)
+        public void SpawnVolcano(Vector2 groundPosition)
         {
-            if (_hazards == null)
+            if (_volcanoes == null)
             {
-                Debug.LogWarning("An attack asked for a ground hazard but the boss has no hazard pool.");
+                Debug.LogWarning("An attack asked for a volcano but the boss has no volcano pool.");
                 return;
             }
 
-            _hazards.Spawn(position);
+            _volcanoes.Spawn(groundPosition);
+        }
+
+        /// <summary>Releases a minion, already hunting the boss's target.</summary>
+        public void SpawnMinion(Vector2 position)
+        {
+            if (_minions == null)
+            {
+                Debug.LogWarning("An attack asked for a minion but the boss has no minion pool.");
+                return;
+            }
+
+            _minions.Spawn(position, _target);
         }
 
         /// <summary>Converts an angle in degrees, measured from world right, into a unit vector.</summary>

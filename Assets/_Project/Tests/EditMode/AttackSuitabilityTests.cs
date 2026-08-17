@@ -81,7 +81,7 @@ namespace BossLevel.Tests
         /// </remarks>
         private BossContext Context(LayerMask sightBlockers = default)
         {
-            return new BossContext(_boss, _muzzle, _target, null, null, sightBlockers);
+            return new BossContext(_boss, _muzzle, _target, null, null, null, sightBlockers);
         }
 
         [Test]
@@ -202,6 +202,17 @@ namespace BossLevel.Tests
         }
 
         [Test]
+        public void SummonMinions_IsPreferredWhileTheArenaIsEmpty()
+        {
+            var summon = MakeAttack<SummonMinionsAttack>();
+
+            // With no pool wired up the arena reads as empty, which is the situation summoning
+            // is for. The falling-off half of the rule needs live minions and is therefore
+            // covered in play rather than here.
+            Assert.Greater(summon.Suitability(Context()), 0.8f);
+        }
+
+        [Test]
         public void EverySuitabilityStaysWithinItsRange()
         {
             var attacks = new BossAttack[]
@@ -212,6 +223,7 @@ namespace BossLevel.Tests
                 MakeAttack<RainAttack>(),
                 MakeAttack<SlamAttack>(),
                 MakeAttack<EruptionAttack>(),
+                MakeAttack<SummonMinionsAttack>(),
             };
 
             foreach (var grounded in new[] { true, false })

@@ -11,10 +11,10 @@
 
 A single-screen boss fight in the style of *Cuphead*'s ground battles. The player
 occupies the left two-thirds of a fixed, non-scrolling arena and fights a large
-boss anchored on the right. The player can run, jump, drop through one-way
-platforms, and fire a projectile. The boss cycles through telegraphed attacks
-drawn from a pool that grows in size and severity across three phases, each
-phase triggered by the boss's remaining health.
+boss anchored on the right. The player can run, jump, double jump, dash through
+damage, and fire a projectile. The boss cycles through telegraphed attacks drawn
+from a pool that grows in size and severity across three phases, each phase
+triggered by the boss's remaining health.
 
 The fight ends in one of two states: the player's health reaches zero (lose), or
 the boss's health reaches zero (win). Both lead to an end screen offering a
@@ -42,7 +42,7 @@ implicit.
 | Shader | One Shader Graph serving hit flash, phase tint, and death dissolve | §10 |
 | VFX | Built-in Particle System bursts on fire, impact, phase change, death | §10 |
 | Tweens | DOTween across UI transitions, health bar drain, telegraphs, fades | §9, §11 |
-| Player mechanic to control | Run, jump (variable height), drop-through, shoot | §6 |
+| Player mechanic to control | Run, jump (variable height), double jump, dash with invulnerability, shoot | §6 |
 | UI | Boss health bar, player health, phase banner, end screens, loading screen | §9 |
 | End scenario — win / lose | `GameStateMachine` with `Won` and `Lost` states | §5 |
 | Clean code | Conventions in §12, enforced throughout | §12 |
@@ -139,8 +139,9 @@ Assets/_Project/
 │   │                            AttackSelector, BossContext
 │   │   ├── Attacks/             BossAttack + one file per concrete attack
 │   │   └── Data/                BossDefinition, BossPhase
-│   ├── Combat/                  IDamageable, Health, Projectile,
-│   │                            ProjectilePool
+│   ├── Combat/                  IDamageable, ITarget, Health, Projectile,
+│   │                            ProjectilePool, VolcanoHazard, VolcanoPool,
+│   │                            Minion, MinionPool
 │   ├── UI/                      BossHealthBar, PlayerHealthView,
 │   │                            PhaseBanner, EndScreen, LoadingScreen
 │   ├── Feel/                    HitStop, CameraShake, SpriteFlash
@@ -268,53 +269,45 @@ Jumping sets vertical velocity directly rather than applying an impulse. An
 impulse adds to existing velocity, so a jump taken while already falling is
 weaker than one from rest — an inconsistency the player feels as unreliability.
 
-### One-way platforms
+### Dash and double jump
 
-Jump-through-from-below is handled by `PlatformEffector2D`, configured on the
-platforms in the scene. No code required.
+The player has two escapes beyond running: a **double jump**, and a **dash** —
+a short, fast, uncontrollable burst that passes through damage.
 
-**Surface Arc is set to 160°, not the default 180°.** The arc is centred on the
-effector's up direction and decides which contact normals count as solid
-surface. At 180° the arc spans exactly −90° to +90°, so a contact with the
-*side* of a platform — whose normal is precisely horizontal — sits on the
-boundary and is treated as surface, which makes the platform's sides solid and
-stops the player dead in mid-air. Narrowing to 160° excludes horizontal normals
-while costing only 10° at each corner of the landing surface, which is
-irrelevant for landing on top.
+The dash is the more important of the two. Without it the only defensive skill
+in the fight is being somewhere else in advance, so a well-read telegraph is
+worth nothing more than a badly-read one, and retreating is always the safest
+play. A dash with invulnerability makes reading a telegraph *correctly* pay:
+the player can hold ground, take the risk, and come out the far side of an
+attack that positioning alone could not have answered.
 
-The platform colliders must also have **Used By Effector** enabled, or the
-effector has no effect at all.
+It is deliberately short and cannot be steered once started. Committing to it
+has to be a decision rather than a means of travel, and one dash per trip
+through the air stops it being chained into flight.
 
-Drop-through is code, and it lives on the **player**, not the platform. The
-player detects what it is standing on and asks that platform to ignore it:
+**Invulnerability is counted, not flagged.** Two systems want it at once — the
+dash, and the frames granted by being hit — and neither knows about the other.
+With a boolean, whichever finished first would strip the protection the other
+was still relying on, producing a rare unfair death that is almost impossible to
+reproduce deliberately. `Health` therefore counts holders, and both systems
+hold and release rather than set and clear.
 
-```
-on drop-through input, while grounded:
-    find the platform beneath via raycast
-    Physics2D.IgnoreCollision(playerCollider, platformCollider, true)
-    restore once the player's feet clear the platform's top edge
-    (with a timeout as a safety net, not as the primary condition)
-```
+### Platforms: removed
 
-Two departures from the starter implementation, both deliberate. The starter
-disabled the platform's collider outright, which turns the platform off for
-*every* object in the scene, not just the dropping player;
-`Physics2D.IgnoreCollision` affects only that one pair. And the starter restored
-on a fixed 0.5s timer, which can re-enable the collider while the player is
-still overlapping it — the position check is the correct primary condition, with
-the timer demoted to a safety net so a missed check cannot leave the player
-falling through the world forever.
+The arena had one-way platforms, using `PlatformEffector2D` for
+jump-through-from-below and per-pair `IgnoreCollision` on the player for
+dropping down.
 
-Placing the logic on the player also means input is read once per frame instead
-of once per platform per frame.
+They were removed after play testing, and the reason is worth recording. Every
+attack the boss had travelled from the boss to the player, so a platform was
+total cover against the entire fight — a player who stood behind one could not
+be hit by anything. That is a failure of attack *variety* rather than of
+placement, and it was addressed twice over: with the volcanic vents (§7), which
+do not travel at all, and by removing the geometry that made hiding possible.
 
-**No platform component is needed at all.** A platform is droppable exactly when
-it is one-way, and what makes it one-way is its `PlatformEffector2D`. The motor
-therefore tests the surface it is standing on for that component rather than
-asking a marker script or a dedicated layer. One less file, one less thing to
-remember to attach, and no way for the two to disagree.
-
----
+What the platforms contributed to mobility is now covered by the double jump and
+the dash, which are answers the player controls rather than terrain that happens
+to be in the right place.
 
 ## 7. Boss
 
@@ -448,27 +441,44 @@ Play testing found a second, structural gap: every attack listed above travels
 *from the boss to the player*, so a single platform in between defeats all of
 them at once. A player who found that spot was safe from the entire fight.
 
-Adding more projectile attacks would not have helped — they share the flaw. The
-fix is a different **shape**: `EruptionAttack` marks patches of ground beneath
-the player which erupt after a warning. It does not travel, so geometry is
-irrelevant to it, and it asks a different question — not "which way do I dodge"
-but "are you still where you were a second ago".
+Adding more projectile attacks would not have helped — they share the flaw. Two
+different **shapes** were added instead, and the platforms were removed as well
+(§6).
 
-It is backed by two mechanisms:
+**`EruptionAttack`** opens volcanic vents on the ground beneath the player,
+which erupt straight upwards after their own long warning. A vent does not
+travel, so distance and geometry are both irrelevant to it, and a column going
+straight up cannot be jumped over — it asks whether the player will give up the
+ground they are standing on, which is the question worth asking of someone who
+has settled somewhere they like. The warning is over two seconds, far more than
+any projectile gives, which is what makes an otherwise undodgeable attack fair:
+the player is never surprised by it, only caught still by it.
 
-- **`GroundHazard`** resolves as a single overlap query at the instant it
-  strikes rather than as a trigger collider, because a player standing inside it
-  when it activates is the normal case here rather than the edge case, and enter
-  events do not fire for something already there.
-- **Line of sight.** `BossContext.LineOfSightFactor` discounts any attack that
-  has to cross the arena when something solid is in the way. The boss therefore
-  stops emptying its repertoire into the underside of a platform, and the
-  attacks that do not need a clear line win the comparison by default. Hiding
-  stops working without the player ever being told that it has.
+`VolcanoHazard` resolves damage by repeated overlap queries against the part of
+the column that has actually risen, rather than by a trigger collider. A collider
+would have to cope with the player already standing inside it when it activates —
+the normal case here — and enter events do not fire for something already there.
+Checking only the risen part also makes the column read as travelling upwards
+rather than simply appearing.
+
+**`SummonMinionsAttack`** is the only attack that leaves something behind.
+Everything else resolves and is gone, so the fight is a series of separate
+problems; minions turn it into a situation the player is managing, because
+ignoring one costs them the arena a piece at a time. It is also the only attack
+that competes for the player's *shots* — time spent clearing minions is time the
+boss is not taking damage, which is a more interesting cost than simply dealing
+more damage would be. The boss reads how many are already alive and stops
+summoning once the arena is busy, because a crowd is noise rather than pressure.
+
+**Line of sight** survives both: `BossContext.LineOfSightFactor` discounts any
+attack that has to cross the arena when something solid is in the way, so the
+boss does not empty its repertoire into an obstacle. With the platforms gone it
+rarely triggers, but it is what keeps the mechanism correct if cover is ever
+reintroduced.
 
 `SlamAttack` additionally checks the player's *height*, not just whether their
-feet are down: standing on a raised platform counts as grounded but is not on
-the floor the shockwave travels along.
+feet are down: being airborne or standing on anything raised puts them off the
+floor the shockwave travels along.
 
 ---
 
@@ -509,6 +519,8 @@ Concrete attacks are separate C# classes, each in its own file, each a
 | `SweepAttack` | Rotating stream that sweeps across the arena |
 | `SlamAttack` | Ground slam producing a shockwave the player must jump |
 | `RainAttack` | Projectiles falling from above, forcing lateral movement |
+| `EruptionAttack` | Volcanic vents that open underfoot and erupt straight up |
+| `SummonMinionsAttack` | Small enemies that hunt the player until killed |
 
 Escalation across phases is largely achieved by duplicating an asset and
 retuning it — `SpreadShot` and `SpreadShot_Hard` are the same C# class with
@@ -735,12 +747,13 @@ impulse, feel affordances added, input centralised, and the ground check's
 position with a local scale and breaks if the player is rescaled — replaced with
 an explicit serialized offset and radius.
 
-**`PassThroughPlatform` → deleted, its job absorbed by `PlayerMotor`.**
-Rationale in §6: per-pair `IgnoreCollision` instead of disabling the collider
-globally, position-based restore instead of a fixed timer, and input read once
-on the player instead of once per platform per frame. No replacement component
-is needed, because the `PlatformEffector2D` already identifies a droppable
-surface.
+**`PassThroughPlatform` → deleted, and then the platforms themselves.** It was
+first replaced by drop-through logic on `PlayerMotor` — per-pair
+`IgnoreCollision` instead of disabling the collider globally, position-based
+restore instead of a fixed timer, and input read once on the player rather than
+once per platform per frame. Play testing then showed the platforms themselves
+were the problem (§6), so both they and that code were removed. The mobility
+they offered is now the double jump and the dash.
 
 ---
 

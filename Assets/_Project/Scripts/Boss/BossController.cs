@@ -35,8 +35,11 @@ namespace BossLevel.Boss
         [Tooltip("Optional. Without it the fight still runs, just with no visible wind-up.")]
         [SerializeField] private BossTelegraph telegraph;
 
-        [Tooltip("Required by attacks that mark the ground rather than shooting at it.")]
-        [SerializeField] private HazardPool hazards;
+        [Tooltip("Required by attacks that open vents in the ground rather than shooting at it.")]
+        [SerializeField] private VolcanoPool volcanoes;
+
+        [Tooltip("Required by attacks that summon minions.")]
+        [SerializeField] private MinionPool minions;
 
         [Tooltip("What counts as cover. The boss checks whether it can actually reach the player " +
                  "before choosing an attack that has to travel there — set this to the ground " +
@@ -119,7 +122,8 @@ namespace BossLevel.Boss
             // half in an asset and half on a component in the scene.
             health.ResetTo(definition.MaxHealth);
 
-            _context = new BossContext(transform, muzzle, target, projectiles, hazards, sightBlockers);
+            _context = new BossContext(
+                transform, muzzle, target, projectiles, volcanoes, minions, sightBlockers);
             _phaseMachine = new BossPhaseMachine(definition.GetPhaseThresholds());
 
             RebuildSelectorForCurrentPhase();
@@ -208,7 +212,7 @@ namespace BossLevel.Boss
         {
             // Untouchable for the duration, so the player cannot burn through the next phase
             // during a moment when the boss cannot fight back.
-            health.IsInvulnerable = true;
+            health.HoldInvulnerability();
 
             // Clearing the arena is the point of the pause: it stops shots authored for the
             // phase that just ended from landing during the phase that has not started.
@@ -226,7 +230,7 @@ namespace BossLevel.Boss
             telegraph?.Play(phaseTransitionCue, phaseTransitionDuration);
             yield return new WaitForSeconds(phaseTransitionDuration);
 
-            health.IsInvulnerable = false;
+            health.ReleaseInvulnerability();
         }
 
         private void RebuildSelectorForCurrentPhase()
@@ -250,17 +254,26 @@ namespace BossLevel.Boss
         }
 
         /// <summary>
-        /// Removes everything the boss has put into the world. Hazards are included because a
-        /// warning left ticking would otherwise strike during a moment the boss is meant to be
-        /// harmless — the player would take a hit from an attack that no longer exists.
+        /// Removes everything the boss has put into the world.
         /// </summary>
+        /// <remarks>
+        /// Vents and minions are included, not just projectiles. A vent left warning would erupt
+        /// during a moment the boss is meant to be harmless, and minions left drifting would
+        /// turn a pause meant as rest into one the player still has to fight through. Both would
+        /// be damage from a phase that has already ended.
+        /// </remarks>
         private void ClearTheArena()
         {
             projectiles.DespawnAll();
 
-            if (hazards != null)
+            if (volcanoes != null)
             {
-                hazards.DespawnAll();
+                volcanoes.DespawnAll();
+            }
+
+            if (minions != null)
+            {
+                minions.DespawnAll();
             }
         }
 

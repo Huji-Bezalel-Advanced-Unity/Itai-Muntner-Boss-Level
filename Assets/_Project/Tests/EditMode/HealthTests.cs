@@ -86,10 +86,56 @@ namespace BossLevel.Tests
         [Test]
         public void TakeDamage_IsIgnoredWhileInvulnerable()
         {
-            _health.IsInvulnerable = true;
+            _health.HoldInvulnerability();
             _health.TakeDamage(50);
 
             Assert.AreEqual(StartingHealth, _health.Current);
+        }
+
+        [Test]
+        public void Invulnerability_LastsUntilEveryHolderHasReleasedIt()
+        {
+            // Two systems can want invulnerability at once — a dash and the frames granted by
+            // being hit. Counting them is what stops whichever finishes first from stripping
+            // protection the other is still relying on.
+            _health.HoldInvulnerability();
+            _health.HoldInvulnerability();
+
+            _health.ReleaseInvulnerability();
+            _health.TakeDamage(50);
+
+            Assert.AreEqual(StartingHealth, _health.Current, "One holder released, one remains.");
+
+            _health.ReleaseInvulnerability();
+            _health.TakeDamage(50);
+
+            Assert.AreEqual(StartingHealth - 50, _health.Current);
+        }
+
+        [Test]
+        public void Invulnerability_CannotBeReleasedBelowZeroAndReopened()
+        {
+            // An unmatched release must not leave a negative count, or the next genuine hold
+            // would fail to take effect at all.
+            _health.ReleaseInvulnerability();
+            _health.ReleaseInvulnerability();
+
+            _health.HoldInvulnerability();
+            _health.TakeDamage(50);
+
+            Assert.AreEqual(StartingHealth, _health.Current);
+        }
+
+        [Test]
+        public void ResetTo_ClearsAnyOutstandingInvulnerability()
+        {
+            _health.HoldInvulnerability();
+            _health.HoldInvulnerability();
+
+            _health.ResetTo(StartingHealth);
+            _health.TakeDamage(25);
+
+            Assert.AreEqual(StartingHealth - 25, _health.Current);
         }
 
         [Test]

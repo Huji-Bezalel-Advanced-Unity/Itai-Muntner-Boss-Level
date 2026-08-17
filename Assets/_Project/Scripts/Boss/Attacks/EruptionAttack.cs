@@ -4,46 +4,56 @@ using UnityEngine;
 namespace BossLevel.Boss.Attacks
 {
     /// <summary>
-    /// Marks patches of ground beneath the player, which erupt a moment later.
+    /// Opens volcanic vents beneath the player, which erupt upwards a moment later.
     /// </summary>
     /// <remarks>
-    /// The boss's answer to cover. Every other attack it has must travel from the boss to the
-    /// player, so a single platform in between defeats all of them at once. This one does not
-    /// travel — it appears where the player is standing, and no amount of geometry helps.
+    /// Every other attack the boss has travels from the boss to the player, so distance and
+    /// anything solid in between work against all of them at once. A vent does not travel — it
+    /// opens where the player already is, and the only answer is to leave.
     /// <para>
-    /// It also demands a different skill. The projectile attacks ask which way to dodge; this
-    /// asks whether the player is still where they were a second ago, which is exactly the
-    /// question worth asking of someone who has found a spot they like.
+    /// It also asks a different question. The projectiles ask which way to dodge; a column going
+    /// straight up cannot be jumped over, so this asks whether the player is willing to give up
+    /// the ground they are standing on. That is the question worth asking of someone who has
+    /// settled into a spot they like.
+    /// </para>
+    /// <para>
+    /// The warning belongs to the vent rather than to the boss, and is deliberately long — over
+    /// two seconds. This attack should therefore carry a <b>short</b> telegraph of its own, or
+    /// the player is warned twice and the whole thing drags.
     /// </para>
     /// </remarks>
     [CreateAssetMenu(fileName = "Eruption", menuName = "Boss Level/Attacks/Eruption")]
     public class EruptionAttack : BossAttack
     {
-        [SerializeField, Min(1)] private int eruptionCount = 4;
+        [SerializeField, Min(1)] private int ventCount = 3;
 
-        [Tooltip("Gap between eruptions. Short enough to keep the player running, long enough " +
-                 "that each one can be escaped.")]
-        [SerializeField, Min(0f)] private float delayBetweenEruptions = 0.4f;
+        [Tooltip("Gap between vents opening. They overlap, because each carries its own long " +
+                 "warning — the player should be tracking two at once.")]
+        [SerializeField, Min(0f)] private float delayBetweenVents = 0.8f;
 
-        [Tooltip("Random scatter around the aim point, so a straight run in one direction is " +
-                 "not a guaranteed escape.")]
-        [SerializeField, Min(0f)] private float scatter = 1.2f;
+        [Tooltip("Random scatter around the aim point, so running in one direction is not a " +
+                 "guaranteed escape from the whole sequence.")]
+        [SerializeField, Min(0f)] private float scatter = 1.5f;
+
+        [Tooltip("Height of the arena floor relative to the boss's own origin. Vents open here.")]
+        [SerializeField] private float groundOffset = -1.5f;
 
         public override IEnumerator Execute(BossContext context)
         {
-            for (var i = 0; i < eruptionCount; i++)
+            var groundHeight = context.BossPosition.y + groundOffset;
+
+            for (var i = 0; i < ventCount; i++)
             {
-                // Aiming rather than reading the position means later eruptions land where the
-                // player is running to, so a single committed sprint does not outpace the whole
-                // sequence.
+                // Aiming rather than reading the position means later vents open where the
+                // player is running to, so a single committed sprint does not outpace the set.
                 var aim = context.AimPoint();
-                var offset = new Vector2(Random.Range(-scatter, scatter), 0f);
+                var offset = Random.Range(-scatter, scatter);
 
-                context.SpawnHazard(aim + offset);
+                context.SpawnVolcano(new Vector2(aim.x + offset, groundHeight));
 
-                if (i < eruptionCount - 1)
+                if (i < ventCount - 1)
                 {
-                    yield return new WaitForSeconds(delayBetweenEruptions);
+                    yield return new WaitForSeconds(delayBetweenVents);
                 }
             }
         }

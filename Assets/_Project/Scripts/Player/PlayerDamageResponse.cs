@@ -30,6 +30,7 @@ namespace BossLevel.Player
         [SerializeField, Min(0.02f)] private float blinkInterval = 0.08f;
 
         private Coroutine _invulnerability;
+        private bool _holdingInvulnerability;
 
         private void Awake()
         {
@@ -71,7 +72,10 @@ namespace BossLevel.Player
 
         private IEnumerator Invulnerability()
         {
-            health.IsInvulnerable = true;
+            // Held rather than set, so a dash running at the same time keeps its own protection
+            // when these frames expire.
+            health.HoldInvulnerability();
+            _holdingInvulnerability = true;
 
             var elapsed = 0f;
 
@@ -94,9 +98,16 @@ namespace BossLevel.Player
                 sprite.enabled = true;
             }
 
+            if (!_holdingInvulnerability)
+            {
+                return;
+            }
+
+            _holdingInvulnerability = false;
+
             if (health != null)
             {
-                health.IsInvulnerable = false;
+                health.ReleaseInvulnerability();
             }
         }
     }

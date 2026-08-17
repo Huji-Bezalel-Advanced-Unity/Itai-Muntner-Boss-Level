@@ -23,8 +23,12 @@ namespace BossLevel.Player
         private const string PlayerMapName = "Player";
         private const string MoveActionName = "Move";
         private const string JumpActionName = "Jump";
-        private const string DropThroughActionName = "Crouch";
         private const string FireActionName = "Attack";
+
+        /// <summary>
+        /// Dash reuses the template's Sprint action, which is already bound to Left Shift.
+        /// </summary>
+        private const string DashActionName = "Sprint";
 
         [Tooltip("The project's InputSystem_Actions asset.")]
         [SerializeField] private InputActionAsset inputActions;
@@ -32,7 +36,7 @@ namespace BossLevel.Player
         private InputActionMap _playerMap;
         private InputAction _move;
         private InputAction _jump;
-        private InputAction _dropThrough;
+        private InputAction _dash;
         private InputAction _fire;
 
         /// <summary>Horizontal movement intent, from -1 (left) to 1 (right).</summary>
@@ -44,8 +48,8 @@ namespace BossLevel.Player
         /// <summary>True while jump is held down. Drives variable jump height.</summary>
         public bool JumpHeld => _jump?.IsPressed() ?? false;
 
-        /// <summary>True only on the frame the drop-through button went down.</summary>
-        public bool DropThroughPressed => _dropThrough?.WasPressedThisFrame() ?? false;
+        /// <summary>True only on the frame the dash button went down.</summary>
+        public bool DashPressed => _dash?.WasPressedThisFrame() ?? false;
 
         /// <summary>True while the fire button is held. Shooting is rate-limited, not per-press.</summary>
         public bool FireHeld => _fire?.IsPressed() ?? false;
@@ -63,7 +67,7 @@ namespace BossLevel.Player
 
             _move = _playerMap.FindAction(MoveActionName, throwIfNotFound: true);
             _jump = _playerMap.FindAction(JumpActionName, throwIfNotFound: true);
-            _dropThrough = _playerMap.FindAction(DropThroughActionName, throwIfNotFound: true);
+            _dash = _playerMap.FindAction(DashActionName, throwIfNotFound: true);
             _fire = _playerMap.FindAction(FireActionName, throwIfNotFound: true);
         }
 
