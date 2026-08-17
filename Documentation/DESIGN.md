@@ -39,7 +39,7 @@ implicit.
 |---|---|---|
 | Loading code, scalable | `SceneLoader` service + `SceneCatalog` asset, async load with progress | §5 |
 | AI, Phases | `BossPhaseMachine` + `AttackSelector` + attack coroutines | §7 |
-| Shader | One Shader Graph serving hit flash, phase tint, and death dissolve | §10 |
+| Shader | One hand-written HLSL shader serving hit flash, telegraph tint, phase tint and death dissolve | §10 |
 | VFX | Built-in Particle System bursts on fire, impact, phase change, death | §10 |
 | Tweens | DOTween across UI transitions, health bar drain, telegraphs, fades | §9, §11 |
 | Player mechanic to control | Run, jump (variable height), double jump, dash with invulnerability, shoot | §6 |
@@ -112,13 +112,21 @@ Three assembly definitions:
 | Assembly | Contents |
 |---|---|
 | `BossLevel.Runtime` | All gameplay code |
-| `BossLevel.Editor` | Editor-only setup tooling (§13) |
+| `BossLevel.Editor` | Editor-only build tooling (§13) |
 | `BossLevel.Tests` | EditMode unit tests |
+| `BossLevel.TestSupport` | Test doubles, excluded from builds |
 
 The split exists for one concrete reason: an assembly definition cannot
 reference Unity's predefined `Assembly-CSharp`, so unit-testing any gameplay
 code requires the gameplay code to live in its own assembly. It is not an
 attempt at layered architecture — at this scope that would be ceremony.
+
+`BossLevel.TestSupport` exists because of a narrower rule. A test assembly is
+editor-only, and Unity refuses to `AddComponent` a type from an editor
+assembly — so any test double that must be a real component cannot live beside
+the tests. It is a normal runtime assembly kept out of player builds by the
+`UNITY_INCLUDE_TESTS` define constraint instead, which keeps test-only types out
+of `BossLevel.Runtime` without making them editor scripts.
 
 ---
 
@@ -144,8 +152,10 @@ Assets/_Project/
 │   │                            Minion, MinionPool
 │   ├── UI/                      BossHealthBar, PlayerHealthView,
 │   │                            PhaseBanner, EndScreen, LoadingScreen
-│   ├── Feel/                    HitStop, CameraShake, SpriteFlash
-│   └── Common/                  Pool, IPoolable, PersistentSingleton
+│   ├── Feel/                    SpriteEffects, DamageFeedback, DeathDissolve,
+│   │                            HitStop, CameraShake, VfxBurst, VfxPool
+│   ├── Common/                  Pool, IPoolable, PersistentSingleton
+│   └── Editor/                  WebGlBuildTool
 ├── Data/                        ScriptableObject assets
 │   ├── Boss/                    FlowerBoss.asset, Phase1..3.asset
 │   └── Attacks/                 one asset per tuned attack variant
@@ -160,12 +170,12 @@ boss's attack logic should find it in one guess.
 **Namespaces mirror folders**: `BossLevel.Boss.Attacks`, `BossLevel.Combat`, and
 so on.
 
-### Migration from the current repository
+### Migration from the starter project
 
-The repository currently contains starter boilerplate under `Assets/BBB/` —
-`MonoSingleton`, `MonoPool`, `IPoolable`, `PlayerMovement`, and
-`PassThroughPlatform` — carried over from earlier projects. The concepts are
-kept; the implementations are replaced. Rationale for each rewrite is in §15.
+The repository began as boilerplate under `Assets/BBB/` — `MonoSingleton`,
+`MonoPool`, `IPoolable`, `PlayerMovement` and `PassThroughPlatform` — carried
+over from earlier projects. The concepts were kept and every implementation
+replaced; §15 records why, one file at a time.
 
 ---
 
@@ -237,7 +247,7 @@ responsibility. This costs a few extra files and buys a reader who can find
 | Component | Responsibility |
 |---|---|
 | `PlayerInputReader` | The only place input is read. Wraps the Input System actions and exposes intent as properties and events. |
-| `PlayerMotor` | Translates intent into physics. Owns grounding, jumping, drop-through. |
+| `PlayerMotor` | Translates intent into physics. Owns grounding, jumping, double jumping and dashing. |
 | `PlayerShooter` | Fire rate, muzzle position, requests projectiles from the pool. |
 | `PlayerDamageResponse` | Invulnerability frames, hit flash, knockback. Listens to `Health`. |
 
@@ -686,26 +696,40 @@ without entering play mode:
 
 | Suite | Asserts |
 |---|---|
-| `AttackSelectorTests` | No immediate repeats; bag refills correctly; every attack in a phase is eventually drawn |
-| `PhaseMachineTests` | Correct phase at each boundary; **no phase is skipped when a single large hit crosses two thresholds**; transitions fire exactly once |
-| `HealthTests` | Damage clamps at zero; death event fires once and only once; damage after death is ignored |
+| `HealthTests` | Damage clamps at zero; death fires once and only once; **invulnerability survives until every holder releases it** |
+| `PoolTests` | Instances are reused rather than quietly recreated; a double return cannot hand the same instance out twice |
+| `AttackSelectorTests` | No immediate repeats, including across a bag refill; duplicate entries weight correctly |
+| `BossPhaseMachineTests` | Correct phase at each boundary; **no phase is skipped when one hit crosses two thresholds**; healing cannot rewind |
+| `AttackSuitabilityTests` | The boss prefers the right attack for the situation, and every score stays in range |
 
-The phase-skip case is the one most likely to ship broken, which is precisely
-why it is written down as a test rather than trusted to play-testing.
+Each of these covers something that fails *silently*. A pool that stops pooling
+still works; a boss whose judgement is inverted still attacks. Nothing about
+either looks like a bug while playing — the game simply feels worse, which is
+the hardest kind of problem to trace back to a cause.
+
+The phase-skip case is the clearest example: it only appears when a single hit
+happens to cross two thresholds, so it can survive any amount of play testing
+and then rob the player of a transition on the one run that matters.
 
 ### Editor tooling
 
-Because this project is authored on a machine separate from the Unity editor,
-editor-side setup is automated rather than performed by hand:
-
 ```
-Boss Level ▸ 1. Configure Project      layers + physics collision matrix
-Boss Level ▸ 2. Generate Data Assets   boss, phase, and attack assets, tuned
-Boss Level ▸ 3. Build Test Scene       arena, platforms, player, boss
+Boss Level ▸ Build WebGL            validate, configure, build into docs/
+Boss Level ▸ Apply WebGL Settings   the player settings alone, without a build
 ```
 
-This is re-runnable, self-documenting, and removes a long manual checklist from
-the setup path.
+The plan originally called for tooling that generated the layers, the data
+assets and the test scene as well. That was written when the expectation was
+that scenes and assets would be assembled blind, and it turned out to be solving
+a problem that did not arise: the assets were authored by hand in the editor far
+faster than a generator could have been specified, and a generator for a
+one-boss project would have been more code than the thing it generated.
+
+The build tooling earned its place for the opposite reason. A WebGL build fails
+in ways that are invisible until it is hosted — a compression format the server
+cannot describe, a first scene that is not the bootstrap — so having those
+settings applied identically every time, and reviewable as source, is worth more
+than a checklist someone has to remember.
 
 ---
 
@@ -713,15 +737,31 @@ the setup path.
 
 **Target: WebGL.** Chosen over mobile because it earns the same 10% while
 keeping keyboard input — a mobile build would require designing touch controls
-for move, jump, drop-through, and shoot, which the rubric does not reward.
+for move, jump, dash and shoot, which the rubric does not reward.
 
 Constraints carried through the design:
 
-- No VFX Graph and no compute shaders (unsupported on WebGL).
-- Compression set to Gzip or Brotli, with the hosting server configured to match.
-- Texture sizes and audio import settings kept modest to hold download size down.
-- Build output hosted via GitHub Pages so the submission can include a live
-  playable link alongside the repository.
+- **No VFX Graph and no compute shaders.** VFX Graph requires compute support,
+  which WebGL does not have; effects built in it would silently do nothing in
+  the submitted build. All particles use the built-in Particle System.
+- **Gzip compression with the decompression fallback enabled.** The fallback is
+  the important half: a static host such as GitHub Pages cannot send the
+  `Content-Encoding` header that compressed Unity builds normally rely on, so
+  without it the loader fails outright and the page shows only an error. This
+  is the single most common reason a WebGL build works locally and not once
+  hosted.
+- **Managed stripping set to High, exceptions limited to explicitly thrown.**
+  Download size is the whole player experience on the web — nobody waits.
+- **Data caching on**, so a second visit does not download the build again.
+
+`Boss Level ▸ Build WebGL` applies all of the above, refuses to build if
+`Bootstrap` is not the first scene, outputs into `docs/`, and writes the
+`.nojekyll` marker that stops GitHub Pages running the build through Jekyll —
+which would skip Unity's underscore-prefixed files.
+
+Publishing is then committing `docs/` and pointing **Settings ▸ Pages** at this
+branch with the `/docs` folder, so the submission carries a live playable link
+alongside the source.
 
 ---
 
@@ -789,32 +829,54 @@ they offered is now the double jump and the dash.
 Each milestone ends in a playable state, so there is always something to
 demonstrate and always a small surface to debug.
 
-| # | Milestone | Done when |
-|---|---|---|
-| 1 | Foundation | Project restructured, conventions in place, assemblies and tests running |
-| 2 | Player | Move, jump, drop-through feel good in an empty greybox arena |
-| 3 | Combat loop | Pooled projectile damages a dummy target; health bar responds |
-| 4 | Boss skeleton | One hardcoded attack running the full telegraph → active → recovery → idle loop |
-| 5 | Data layer | That attack converted to a ScriptableObject; attacks 2–5 authored as assets |
-| 6 | Phases | Thresholds, transition sequence, shuffle-bag selection, win and lose |
-| 7 | Shell | Bootstrap, loading, menu, end screens |
-| 8 | Polish | Shader, VFX, hit stop, shake, tween pass |
-| 9 | Build | WebGL build, hosting, final documentation pass |
+| # | Milestone | Done when | |
+|---|---|---|---|
+| 1 | Foundation | Project restructured, conventions in place, assemblies and tests running | ✅ |
+| 2 | Player | Movement feels good in an empty greybox arena | ✅ |
+| 3 | Combat loop | Pooled projectile damages a dummy target; health responds | ✅ |
+| 4 | Boss skeleton | One hardcoded attack running the full telegraph → active → recovery → idle loop | ✅ |
+| 5 | Data layer | That attack converted to a ScriptableObject; the rest authored as assets | ✅ |
+| 6 | Phases | Thresholds, transition sequence, shuffle-bag selection, win and lose | ✅ |
+| 7 | Shell | Bootstrap, loading, menu, health bars, phase banner, end screens | ✅ |
+| 8 | Polish | Shader, VFX, hit stop, shake, tween pass | ✅ |
+| 9 | Build | WebGL build, hosting, final documentation pass | ✅ |
 
-Milestone 5 deliberately follows milestone 4: the data abstraction is built
-*after* one concrete attack exists, so it is shaped by a real case rather than
-by a guess about one.
+Milestone 5 deliberately followed milestone 4: the data abstraction was built
+*after* one concrete attack existed, so it was shaped by a real case rather than
+by a guess about one. That paid off — `BossAttack` needed no revision when the
+remaining six attacks were written against it.
 
-Milestone 8 is the one most likely to be skipped, because by then the fight
-works and polish can feel like it is not progress. It is 10% of the grade and
-most of the perceived quality.
+### What play testing changed
+
+The plan survived contact reasonably well, but three things only became visible
+once the fight was playable, and each is recorded where it belongs rather than
+quietly patched:
+
+- **The boss could not hit a moving player** (§7). It fired at where the player
+  stood, so standing still was optimal — the least interesting strategy in the
+  game. Fixed with predictive aiming and situational attack selection, not with
+  difficulty numbers.
+- **Platforms were total cover** (§6). Every attack travelled from the boss to
+  the player, so one platform defeated all of them. Fixed twice: with attack
+  shapes that do not travel, and by removing the platforms.
+- **The player's toolkit was too thin** (§6). One verb and no defensive skill
+  meant a well-read telegraph was worth no more than a badly-read one. The dash
+  is the answer, and it changed the feel of the fight more than any boss change
+  did.
 
 ---
 
-## 17. Open questions
+## 17. Resolved questions
 
-- The assignment describes the scope as "Survivor.io boss phase." This project
-  reads that as *scale of deliverable* rather than *genre to copy*, and
-  implements a Cuphead-style side-scrolling encounter, which satisfies every
-  listed requirement including "player mechanic to control." To be confirmed
-  with the instructor.
+- **"Boss Level (scope of Survivor.io boss phase)"** — read as *scale of
+  deliverable* rather than *genre to copy*, and confirmed with the instructor.
+  The Cuphead-style side-scrolling encounter satisfies every listed requirement,
+  including "player mechanic to control", which Survivor.io's auto-attack
+  notably would not.
+- **Shader Graph or hand-written shader** — hand-written. A `.shadergraph` is
+  generated JSON, which cannot be read or reviewed, and on a project graded
+  largely on readable source that is a poor trade for an effect that fits on one
+  page (§10).
+- **Web or mobile build** — WebGL. The same 10% either way, and mobile would have
+  required designing touch controls for move, jump, dash and shoot, which the
+  rubric does not reward (§14).

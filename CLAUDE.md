@@ -399,5 +399,17 @@ Two follow-up fixes after play testing:
   Unity's built-in particle material renders magenta under URP; it logs a warning
   if that is missing.
 
-**Next: Milestone 9 (Build)** — WebGL build, GitHub Pages hosting, final
-documentation pass. Per `Documentation/DESIGN.md` §14 and §16.
+**Milestone 9 (Build) — written, not yet run.** The build order is complete.
+
+- `Scripts/Editor/BossLevel.Editor.asmdef` + `WebGlBuildTool` —
+  *Boss Level ▸ Build WebGL* and *Boss Level ▸ Apply WebGL Settings*. Validates
+  that `Bootstrap` is the first enabled scene, applies the player settings,
+  builds into `docs/`, and writes `.nojekyll`.
+- **Gzip + `decompressionFallback = true` is the critical setting.** GitHub Pages
+  cannot send the `Content-Encoding` header a compressed Unity build otherwise
+  needs, so without the fallback the build works locally and fails once hosted.
+- `README.md` written (the empty extensionless `README` is gone); design doc
+  brought in line with what was actually built.
+
+Remaining for the user: run the build, commit `docs/`, enable Pages
+(Settings ▸ Pages ▸ this branch, `/docs`), and paste the link into `README.md`.
