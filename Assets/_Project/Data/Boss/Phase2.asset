@@ -19,6 +19,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 55e6330483a20d84bb82cba8e73a93fe, type: 2}
   - {fileID: 11400000, guid: 164c5ae58a72dc44ea18ebfc2234edcc, type: 2}
   - {fileID: 11400000, guid: b3ef47ffb6a666244a61a49153488c9c, type: 2}
+  - {fileID: 11400000, guid: e1e1f63bae351544188a76d1e0a6920d, type: 2}
   cooldownRange: {x: 0.6, y: 1.1}
   telegraphMultiplier: 0.85
   recoveryMultiplier: 0.85
