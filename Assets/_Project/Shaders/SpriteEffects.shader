@@ -12,7 +12,9 @@ Shader "Boss Level/Sprite Effects"
 {
     Properties
     {
-        [MainTexture] _MainTex ("Sprite Texture", 2D) = "white" {}
+        // PerRendererData because a SpriteRenderer supplies the texture itself, per sprite,
+        // rather than it being an authored property of the material.
+        [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         [MainColor] _Color ("Material Tint", Color) = (1, 1, 1, 1)
 
         [Header(Damage Flash)]
