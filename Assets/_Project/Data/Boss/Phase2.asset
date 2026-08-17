@@ -22,6 +22,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e1e1f63bae351544188a76d1e0a6920d, type: 2}
   - {fileID: 11400000, guid: 36d57b865935bc643a43ef7688dc14af, type: 2}
   cooldownRange: {x: 0.6, y: 1.1}
-  telegraphMultiplier: 0.85
+  telegraphMultiplier: 1
   recoveryMultiplier: 0.85
-  aimLead: 0.65
+  aimLead: 0.8
+  tint: {r: 1, g: 1, b: 1, a: 1}
