@@ -1,3 +1,4 @@
+using BossLevel.Audio;
 using BossLevel.Combat;
 using UnityEngine;
 
@@ -25,6 +26,10 @@ namespace BossLevel.Player
         [Header("Tuning")]
         [SerializeField, Min(0.1f)] private float shotsPerSecond = 6f;
 
+        [Tooltip("Optional. The most repeated sound in the game, so it wants several clips and " +
+                 "a little pitch variation.")]
+        [SerializeField] private SoundEvent shootSound;
+
         private float _nextShotTime;
 
         private void Awake()
@@ -50,6 +55,11 @@ namespace BossLevel.Player
             var direction = new Vector2(motor.Facing, 0f);
 
             projectiles.Spawn(muzzle.position, direction);
+
+            if (shootSound != null)
+            {
+                shootSound.Play(muzzle.position);
+            }
         }
     }
 }

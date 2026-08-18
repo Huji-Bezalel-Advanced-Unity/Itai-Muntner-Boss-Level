@@ -1,3 +1,4 @@
+using BossLevel.Audio;
 using BossLevel.Combat;
 using UnityEngine;
 
@@ -31,6 +32,10 @@ namespace BossLevel.Player
 
         [Tooltip("Optional. Only needed so a dash can grant invulnerability.")]
         [SerializeField] private Health health;
+
+        [Header("Sound (optional)")]
+        [SerializeField] private SoundEvent jumpSound;
+        [SerializeField] private SoundEvent dashSound;
 
         [Header("Running")]
         [SerializeField] private float moveSpeed = 8f;
@@ -252,6 +257,11 @@ namespace BossLevel.Player
             // Consume both windows so one press cannot produce two jumps.
             _timeSinceJumpPressed = float.PositiveInfinity;
             _timeSinceGrounded = float.PositiveInfinity;
+
+            if (jumpSound != null)
+            {
+                jumpSound.Play();
+            }
         }
 
         private void ApplyGravity()
@@ -289,6 +299,11 @@ namespace BossLevel.Player
             {
                 health.HoldInvulnerability();
                 _holdingDashInvulnerability = true;
+            }
+
+            if (dashSound != null)
+            {
+                dashSound.Play();
             }
         }
 

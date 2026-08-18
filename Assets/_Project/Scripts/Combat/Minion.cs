@@ -1,4 +1,5 @@
 using BossLevel.Common;
+using DG.Tweening;
 using UnityEngine;
 
 namespace BossLevel.Combat
@@ -34,7 +35,13 @@ namespace BossLevel.Combat
         [Tooltip("Safety net so a minion whose target vanishes cannot haunt the arena forever.")]
         [SerializeField, Min(1f)] private float lifetime = 30f;
 
+        [Tooltip("How long the minion takes to swell to full size when it appears. Long enough " +
+                 "to notice one arriving, short enough that it is a real threat immediately.")]
+        [SerializeField, Min(0.05f)] private float spawnPopDuration = 0.25f;
+
         private Rigidbody2D _body;
+        private Vector3 _baseScale;
+        private Tween _spawnPop;
         private MinionPool _owner;
         private ITarget _target;
         private float _timeAlive;
@@ -63,6 +70,7 @@ namespace BossLevel.Combat
         private void Awake()
         {
             _body = GetComponent<Rigidbody2D>();
+            _baseScale = transform.localScale;
 
             if (health == null)
             {
@@ -98,10 +106,23 @@ namespace BossLevel.Combat
         {
             _timeAlive = 0f;
             _isDying = false;
+
+            // Swelling into existence rather than simply being there. The brief moment at zero
+            // size also means a minion cannot be hit on the frame it appears, which reads as
+            // fair rather than as a gap in the collision.
+            _spawnPop?.Kill();
+            transform.localScale = Vector3.zero;
+            _spawnPop = transform.DOScale(_baseScale, spawnPopDuration).SetEase(Ease.OutBack);
         }
 
         public void OnDespawn()
         {
+            _spawnPop?.Kill();
+            _spawnPop = null;
+
+            // Restored, because a pooled instance is handed out again exactly as it was left.
+            transform.localScale = _baseScale;
+
             _body.linearVelocity = Vector2.zero;
             _target = null;
         }

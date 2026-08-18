@@ -413,3 +413,27 @@ Two follow-up fixes after play testing:
 
 Remaining for the user: run the build, commit `docs/`, enable Pages
 (Settings ▸ Pages ▸ this branch, `/docs`), and paste the link into `README.md`.
+
+**Audio and presentation pass — written, not yet compiled.** Requested after
+Milestone 9 was drafted; the build is still the last step.
+
+- `Audio/SoundEvent` (SO: clips, volume, pitch range, spatial blend, minimum
+  interval), `Audio/SoundEmitter` (pooled `AudioSource`), `Audio/AudioService`
+  (`PersistentSingleton`, `Pool<SoundEmitter>`, crossfading music),
+  `Audio/SceneMusic` (per-scene track request).
+- **The minimum-interval timestamp lives in the service, not on the asset** —
+  interval is config, last-played is state. Same rule as `BossAttack`.
+- Sound hooks: `PlayerShooter` (shoot), `PlayerMotor` (jump, dash),
+  `DamageFeedback` (hit), `ButtonFeedback` (hover, click).
+- `UI/ButtonFeedback` — hover scale, press punch, sounds. `UI/SceneFadeIn` —
+  in-scene fade from black so a scene opens the same way however it was entered,
+  including the direct-play retry fallback.
+- `EndScreen` gained a panel scale-in alongside its fade.
+- `MinionPool` now raises `Spawned` / `Despawned` **events**; `Feel/MinionFeedback`
+  listens and plays bursts and sounds. Done as events specifically to avoid
+  `Combat` depending on `Feel`, which already depends on `Combat`.
+- `Minion` scales up on spawn (`OnSpawn`) and restores scale on despawn.
+
+`AudioService` must go in the **Bootstrap** scene beside `SceneLoader`.
+`AudioService.Awake` returns early if `Instance != this`, so a duplicate does not
+build a pool it will never use.

@@ -42,6 +42,7 @@ implicit.
 | Shader | One hand-written HLSL shader serving hit flash, telegraph tint, phase tint and death dissolve | §10 |
 | VFX | Built-in Particle System bursts on fire, impact, phase change, death | §10 |
 | Tweens | DOTween across UI transitions, health bar drain, telegraphs, fades | §9, §11 |
+| Audio | `SoundEvent` assets, pooled emitters, crossfading music service | §10 |
 | Player mechanic to control | Run, jump (variable height), double jump, dash with invulnerability, shoot | §6 |
 | UI | Boss health bar, player health, phase banner, end screens, loading screen | §9 |
 | End scenario — win / lose | `GameStateMachine` with `Won` and `Lost` states | §5 |
@@ -152,8 +153,11 @@ Assets/_Project/
 │   │                            Minion, MinionPool
 │   ├── UI/                      BossHealthBar, PlayerHealthView,
 │   │                            PhaseBanner, EndScreen, LoadingScreen
+│   ├── Audio/                   SoundEvent, SoundEmitter, AudioService,
+│   │                            SceneMusic
 │   ├── Feel/                    SpriteEffects, DamageFeedback, DeathDissolve,
-│   │                            HitStop, CameraShake, VfxBurst, VfxPool
+│   │                            MinionFeedback, HitStop, CameraShake,
+│   │                            VfxBurst, VfxPool
 │   ├── Common/                  Pool, IPoolable, PersistentSingleton
 │   └── Editor/                  WebGlBuildTool
 ├── Data/                        ScriptableObject assets
@@ -573,7 +577,7 @@ fight is fully functional in a scene with no canvas — useful when testing.
 
 ---
 
-## 10. Shader, VFX, and feel
+## 10. Shader, VFX, audio, and feel
 
 ### Shader
 
@@ -612,6 +616,46 @@ explosion.
 **Deliberately not VFX Graph.** VFX Graph requires compute shader support, which
 **WebGL does not provide**. Effects built in it would silently do nothing in the
 submitted build.
+
+### Audio
+
+Audio reuses three patterns the project already leans on rather than inventing a
+fourth, which is most of why it is small.
+
+**`SoundEvent` is a ScriptableObject**, exactly as `BossAttack` is. A sound is
+mostly numbers — which clip, how loud, how far the pitch wanders — and those want
+tuning while the game runs. It also puts a layer between the code and the clip,
+so replacing a placeholder with a real recording is a change to one asset rather
+than to whichever component happened to reference it.
+
+A `SoundEvent` can hold **several clips and a pitch range**, and picks between
+them. Repetition is what makes game audio grating, and a weapon firing four times
+a second is this project's worst offender; random selection and a little pitch
+wander is most of the cure.
+
+**`AudioService` is a `PersistentSingleton`**, like `SceneLoader`, because music
+has to survive the scene changes it plays across — a track restarting every time
+the player pressed retry would make the game feel like it was stuttering rather
+than continuing. Requesting a track already playing is a no-op, so the menu and
+the fight can share one without it ever restarting.
+
+**Sound effects use `Pool<T>`** — the same pool as projectiles, minions and
+particles. Sounds arrive in bursts at the busiest moments, which is exactly when
+allocating an `AudioSource` per shot is least affordable.
+
+Two details worth their lines. A `SoundEvent` carries a **minimum interval**, but
+the record of when it last played lives in the service, not on the asset — the
+interval is configuration and the timestamp is runtime state, and the rule about
+ScriptableObjects never holding state applies as much here as anywhere. And every
+duration in the audio layer uses **unscaled time**, because audio is unaffected by
+`Time.timeScale`, so a hit stop must not hold an emitter that has already finished
+playing.
+
+Call sites read as `jumpSound.Play()` rather than as a call into the service, so
+they say *what* should be heard and not how it gets played. When no service
+exists — a gameplay scene played directly rather than through Bootstrap — sounds
+are silently skipped rather than logging, which would otherwise drown the console
+on every shot.
 
 ### Feel
 

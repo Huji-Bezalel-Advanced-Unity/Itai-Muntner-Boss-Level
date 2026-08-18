@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using BossLevel.Common;
 using UnityEngine;
@@ -27,6 +28,17 @@ namespace BossLevel.Combat
         /// <summary>How many minions are currently hunting the player.</summary>
         public int ActiveCount => _active.Count;
 
+        /// <summary>Raised with the position where a minion appeared.</summary>
+        /// <remarks>
+        /// Announced rather than acted upon, so the presentation lives in the feel layer and
+        /// this stays a pool. It also avoids the combat code depending on the effects code,
+        /// which already depends on combat.
+        /// </remarks>
+        public event Action<Vector2> Spawned;
+
+        /// <summary>Raised with the position where a minion was killed or burst.</summary>
+        public event Action<Vector2> Despawned;
+
         private void Awake()
         {
             if (prefab == null)
@@ -47,6 +59,8 @@ namespace BossLevel.Combat
             _active.Add(minion);
             minion.Launch(this, target, position);
 
+            Spawned?.Invoke(position);
+
             return minion;
         }
 
@@ -58,8 +72,13 @@ namespace BossLevel.Combat
                 return;
             }
 
+            // Read before returning, because a pooled instance is moved before its next use.
+            var restingPlace = (Vector2)minion.transform.position;
+
             _active.Remove(minion);
             _pool.Return(minion);
+
+            Despawned?.Invoke(restingPlace);
         }
 
         /// <summary>

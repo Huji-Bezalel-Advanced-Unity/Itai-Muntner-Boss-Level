@@ -1,3 +1,4 @@
+using BossLevel.Audio;
 using BossLevel.Combat;
 using DG.Tweening;
 using UnityEngine;
@@ -41,6 +42,8 @@ namespace BossLevel.Feel
 
         [SerializeField] private VfxPool impactVfx;
         [SerializeField] private Color impactColour = new Color(1f, 0.8f, 0.4f);
+
+        [SerializeField] private SoundEvent hitSound;
 
         private Tween _flash;
 
@@ -86,6 +89,11 @@ namespace BossLevel.Feel
             if (impactVfx != null)
             {
                 impactVfx.Play(transform.position, impactColour);
+            }
+
+            if (hitSound != null)
+            {
+                hitSound.Play(transform.position);
             }
         }
 

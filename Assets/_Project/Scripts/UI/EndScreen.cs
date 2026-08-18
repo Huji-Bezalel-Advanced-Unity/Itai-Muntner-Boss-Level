@@ -23,6 +23,12 @@ namespace BossLevel.UI
         [SerializeField] private Button retryButton;
         [SerializeField] private Button menuButton;
 
+        [Tooltip("Optional. The panel holding the title and buttons — it scales up as the " +
+                 "screen fades in, so the result arrives rather than simply being there.")]
+        [SerializeField] private RectTransform panel;
+
+        [SerializeField, Range(0.5f, 1f)] private float panelStartScale = 0.85f;
+
         [SerializeField] private string wonTitle = "VICTORY";
         [SerializeField] private string lostTitle = "DEFEATED";
 
@@ -30,6 +36,7 @@ namespace BossLevel.UI
 
         private CanvasGroup _group;
         private Tween _fade;
+        private Tween _panelScale;
 
         private void Awake()
         {
@@ -75,6 +82,7 @@ namespace BossLevel.UI
             }
 
             _fade?.Kill();
+            _panelScale?.Kill();
         }
 
         private void OnStateChanged(GameState state)
@@ -97,7 +105,25 @@ namespace BossLevel.UI
             _group.blocksRaycasts = true;
 
             _fade?.Kill();
+
+            // Unscaled throughout: the fight may still be frozen by the hit stop from the blow
+            // that ended it, and an end screen that will not appear until time resumes reads as
+            // the game having hung.
             _fade = _group.DOFade(1f, fadeDuration).SetUpdate(true);
+
+            if (panel == null)
+            {
+                return;
+            }
+
+            _panelScale?.Kill();
+
+            panel.localScale = Vector3.one * panelStartScale;
+
+            _panelScale = panel
+                .DOScale(Vector3.one, fadeDuration)
+                .SetEase(Ease.OutBack)
+                .SetUpdate(true);
         }
 
         private void Retry()
