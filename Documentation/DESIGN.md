@@ -657,6 +657,29 @@ exists — a gameplay scene played directly rather than through Bootstrap — so
 are silently skipped rather than logging, which would otherwise drown the console
 on every shot.
 
+**`LoopingSound` is the counterpart** for anything held rather than fired once.
+A pooled emitter releases itself on a timer, which is exactly wrong for a sound
+that should last an unknown length of time, so a loop owns its own
+`AudioSource`. Its fades are not decoration: starting a looping clip at full
+volume clicks and cutting it dead clicks louder, and for something that starts
+and stops several times a second while the player taps, that is the difference
+between a weapon and a fault.
+
+Firing uses both, because firing sounds like two different things. A tap is a
+single shot; a held trigger is a continuous roar that retriggering one short clip
+cannot imitate — overlapping copies of the same sample phase against each other
+and become a rattle. So `PlayerShooter` plays the single-shot clip per shot while
+tapping, and hands over to the loop once the button has been held past a brief
+threshold, silencing the per-shot clip while it does.
+
+**Attacks carry their own sounds**, played by `BossController` alongside the
+telegraph for the same reason the timing lives there: stated once, an attack
+written later cannot forget it. A distinct sound per attack is worth more than
+the visual tell in one specific way — the player can be looking anywhere, and
+sound reaches them regardless. That matters most for the attacks that do not
+originate at the boss, which is why the volcanic vent carries its own rumble as
+well.
+
 ### Feel
 
 The 10% for juice is cheap to earn and worth doing last, once the fight works.

@@ -437,3 +437,21 @@ Milestone 9 was drafted; the build is still the last step.
 `AudioService` must go in the **Bootstrap** scene beside `SceneLoader`.
 `AudioService.Awake` returns early if `Instance != this`, so a duplicate does not
 build a pool it will never use.
+
+**Sustained fire and boss attack sounds — written, not yet compiled.**
+
+- `Audio/LoopingSound` — owns its own `AudioSource` (a pooled emitter
+  self-releases on a timer, wrong for a held sound). Fades in and out because
+  starting or cutting a loop abruptly clicks. `IsPlaying` tracks *intent*, not
+  `AudioSource.isPlaying`, which stays true during a fade-out.
+- `PlayerShooter` plays `singleShotSound` per shot while tapping and hands over
+  to `sustainedFire` after `sustainDelay`, silencing the per-shot clip. Stops the
+  loop in `OnDisable`. The old `shootSound` field is preserved via
+  `[FormerlySerializedAs]`, so the existing assignment survives the rename.
+- `BossAttack` gained `TelegraphSound` and `AttackSound`, played by
+  `BossController` alongside the telegraph — stated once so a later attack cannot
+  omit them.
+- `BossController` gained `phaseChangeSound` and `defeatedSound`;
+  `VolcanoHazard` gained `warningSound` and `eruptSound`.
+- `AudioService` exposes `EffectsVolume` and `EffectsGroup` so self-owned
+  sources mix alongside pooled ones.

@@ -1,6 +1,7 @@
 using BossLevel.Audio;
 using BossLevel.Combat;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace BossLevel.Player
 {
@@ -11,10 +12,21 @@ namespace BossLevel.Player
     /// Rate-limited on hold rather than one shot per press: the fight expects a steady stream,
     /// and tying fire rate to how fast the player can tap rewards the keyboard rather than the
     /// player.
+    /// <para>
+    /// The sound is handled in two halves, because firing sounds like two different things. A
+    /// tap is a single shot; a held trigger is a continuous roar that no amount of retriggering
+    /// one clip will imitate — overlapping copies of the same short sample phase against each
+    /// other and turn into a rattle. So a tap plays the single-shot clip, and holding past a
+    /// brief threshold hands over to a looping one which stops the moment the button is
+    /// released.
+    /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public class PlayerShooter : MonoBehaviour
     {
+        /// <summary>Sentinel for "the fire button is not currently down".</summary>
+        private const float NotHeld = -1f;
+
         [Header("Dependencies")]
         [SerializeField] private PlayerInputReader input;
         [SerializeField] private PlayerMotor motor;
@@ -26,11 +38,23 @@ namespace BossLevel.Player
         [Header("Tuning")]
         [SerializeField, Min(0.1f)] private float shotsPerSecond = 6f;
 
-        [Tooltip("Optional. The most repeated sound in the game, so it wants several clips and " +
-                 "a little pitch variation.")]
-        [SerializeField] private SoundEvent shootSound;
+        [Header("Sound (optional)")]
+        [Tooltip("Played per shot while tapping. Silent once the sustained loop takes over.")]
+        [FormerlySerializedAs("shootSound")]
+        [SerializeField] private SoundEvent singleShotSound;
+
+        [Tooltip("The continuous firing sound, looped while the button is held.")]
+        [SerializeField] private LoopingSound sustainedFire;
+
+        [Tooltip("How long the button must be held before the loop takes over. Roughly one or " +
+                 "two shots — long enough that a deliberate tap stays a tap.")]
+        [SerializeField, Min(0f)] private float sustainDelay = 0.22f;
 
         private float _nextShotTime;
+        private float _heldSince = NotHeld;
+
+        /// <summary>True once the button has been held long enough for the loop to take over.</summary>
+        private bool IsSustaining => _heldSince >= 0f && Time.time - _heldSince >= sustainDelay;
 
         private void Awake()
         {
@@ -41,8 +65,22 @@ namespace BossLevel.Player
             }
         }
 
+        private void OnDisable()
+        {
+            // Control can be taken away mid-burst — at the end of the fight, or on death — and
+            // the loop must not outlive the shooting it describes.
+            _heldSince = NotHeld;
+
+            if (sustainedFire != null)
+            {
+                sustainedFire.Stop();
+            }
+        }
+
         private void Update()
         {
+            UpdateFiringSound();
+
             if (!input.FireHeld || Time.time < _nextShotTime)
             {
                 return;
@@ -56,9 +94,36 @@ namespace BossLevel.Player
 
             projectiles.Spawn(muzzle.position, direction);
 
-            if (shootSound != null)
+            // Only while tapping. Once the loop has taken over it carries the sound of firing by
+            // itself, and layering single shots on top muddies both.
+            if (!IsSustaining && singleShotSound != null)
             {
-                shootSound.Play(muzzle.position);
+                singleShotSound.Play(muzzle.position);
+            }
+        }
+
+        private void UpdateFiringSound()
+        {
+            if (!input.FireHeld)
+            {
+                _heldSince = NotHeld;
+
+                if (sustainedFire != null)
+                {
+                    sustainedFire.Stop();
+                }
+
+                return;
+            }
+
+            if (_heldSince < 0f)
+            {
+                _heldSince = Time.time;
+            }
+
+            if (IsSustaining && sustainedFire != null && !sustainedFire.IsPlaying)
+            {
+                sustainedFire.Play();
             }
         }
     }

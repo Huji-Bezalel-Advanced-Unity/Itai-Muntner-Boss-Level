@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using BossLevel.Audio;
 using BossLevel.Boss.Attacks;
 using BossLevel.Boss.Data;
 using BossLevel.Combat;
@@ -44,6 +45,11 @@ namespace BossLevel.Boss
         [SerializeField] private CameraShake cameraShake;
 
         [SerializeField, Min(0f)] private float phaseShakeStrength = 0.35f;
+
+        [Tooltip("Optional. Announces a phase change, and the boss's defeat.")]
+        [SerializeField] private SoundEvent phaseChangeSound;
+
+        [SerializeField] private SoundEvent defeatedSound;
 
         [Tooltip("Required by attacks that open vents in the ground rather than shooting at it.")]
         [SerializeField] private VolcanoPool volcanoes;
@@ -199,12 +205,18 @@ namespace BossLevel.Boss
                 CurrentAttack = attack;
 
                 // Telegraph — the warning. Nothing damaging happens during this window.
+                //
+                // The sound is played here rather than inside each attack for the same reason
+                // the timing is: stated once, it cannot be forgotten by an attack written later,
+                // and every attack gets a warning the player can hear without looking.
                 var telegraphDuration = attack.TelegraphDuration * phase.TelegraphMultiplier;
                 telegraph?.Play(attack.TelegraphCue, telegraphDuration);
+                attack.TelegraphSound?.Play(transform.position);
                 yield return new WaitForSeconds(telegraphDuration);
 
                 // Active — the threat. Yielding the attack's own coroutine runs it inline, so
                 // stopping this loop also stops whatever the attack was in the middle of.
+                attack.AttackSound?.Play(muzzle.position);
                 yield return attack.Execute(_context);
 
                 // Recovery — the boss is committed. This is when the player answers back.
@@ -243,6 +255,8 @@ namespace BossLevel.Boss
                 cameraShake.Play(phaseShakeStrength, phaseTransitionDuration * 0.5f);
             }
 
+            phaseChangeSound?.Play(transform.position);
+
             PhaseChanged?.Invoke(phase, _phaseMachine.CurrentIndex);
 
             // A cue deliberately unlike any attack's: white rather than a hue, several rapid
@@ -271,6 +285,9 @@ namespace BossLevel.Boss
         private void OnDied()
         {
             StopFighting();
+
+            defeatedSound?.Play(transform.position);
+
             Defeated?.Invoke();
         }
 

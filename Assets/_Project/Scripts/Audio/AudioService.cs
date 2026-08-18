@@ -47,6 +47,16 @@ namespace BossLevel.Audio
         private Tween _musicFade;
 
         /// <summary>
+        /// The overall level for sound effects, so sounds that own their own source — such as
+        /// <see cref="LoopingSound"/> — are mixed alongside the pooled ones rather than beside
+        /// them.
+        /// </summary>
+        public float EffectsVolume => effectsVolume;
+
+        /// <summary>The mixer group effects route through, or null if the project has no mixer.</summary>
+        public AudioMixerGroup EffectsGroup => effectsGroup;
+
+        /// <summary>
         /// When each event was last heard, so <see cref="SoundEvent.MinimumInterval"/> can be
         /// honoured.
         /// </summary>

@@ -1,4 +1,5 @@
 using System.Collections;
+using BossLevel.Audio;
 using UnityEngine;
 
 namespace BossLevel.Boss.Attacks
@@ -40,6 +41,13 @@ namespace BossLevel.Boss.Attacks
                  "warning the player can identify is worth far more than one they can only count.")]
         [SerializeField] private TelegraphCue telegraphCue = TelegraphCue.Default;
 
+        [Tooltip("Played as the wind-up begins. The most valuable sound in the fight: it warns " +
+                 "the player about an attack they may not be looking at.")]
+        [SerializeField] private SoundEvent telegraphSound;
+
+        [Tooltip("Played as the attack lands.")]
+        [SerializeField] private SoundEvent attackSound;
+
         public string DisplayName => displayName;
 
         public float TelegraphDuration => telegraphDuration;
@@ -48,6 +56,19 @@ namespace BossLevel.Boss.Attacks
 
         /// <summary>How this attack announces itself before it lands.</summary>
         public TelegraphCue TelegraphCue => telegraphCue;
+
+        /// <summary>
+        /// Heard as the wind-up begins, or null for a silent one.
+        /// </summary>
+        /// <remarks>
+        /// A distinct sound per attack is worth more than the visual tell in one specific way:
+        /// the player can be looking anywhere. Sound reaches them regardless of where their
+        /// attention is, which matters most for the attacks that do not originate at the boss.
+        /// </remarks>
+        public SoundEvent TelegraphSound => telegraphSound;
+
+        /// <summary>Heard as the attack lands, or null for a silent one.</summary>
+        public SoundEvent AttackSound => attackSound;
 
         /// <summary>
         /// Repairs a cue that Unity zero-filled.

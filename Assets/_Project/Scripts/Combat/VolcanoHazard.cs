@@ -1,4 +1,5 @@
 using System.Collections;
+using BossLevel.Audio;
 using BossLevel.Common;
 using DG.Tweening;
 using UnityEngine;
@@ -56,6 +57,13 @@ namespace BossLevel.Combat
         [SerializeField] private Color warningStartColour = new Color(1f, 0.45f, 0.1f, 0.25f);
         [SerializeField] private Color warningPeakColour = new Color(1f, 0.9f, 0.4f, 0.85f);
 
+        [Header("Sound (optional)")]
+        [Tooltip("A rumble as the vent opens. This one earns its place more than most — a vent " +
+                 "opens underfoot rather than at the boss, so the player may never see it start.")]
+        [SerializeField] private SoundEvent warningSound;
+
+        [SerializeField] private SoundEvent eruptSound;
+
         private VolcanoPool _owner;
         private Coroutine _routine;
         private Sequence _warningTween;
@@ -103,8 +111,11 @@ namespace BossLevel.Combat
         private IEnumerator Run()
         {
             PlayWarning();
+            warningSound?.Play(transform.position);
 
             yield return new WaitForSeconds(warningDuration);
+
+            eruptSound?.Play(transform.position);
 
             yield return Erupt();
 
