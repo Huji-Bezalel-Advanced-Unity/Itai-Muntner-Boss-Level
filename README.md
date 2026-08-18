@@ -1,4 +1,4 @@
-# Boss Level
+# Rectangle Hate
 
 A single-screen boss fight in the style of *Cuphead*'s ground battles, built in
 Unity 6 with the Universal Render Pipeline.
@@ -20,10 +20,10 @@ the patience it showed you in the first one.
 
 | Action | Key |
 |---|---|
-| Move | **A / D** or **← →** |
-| Jump (and double jump) | **Space** |
+| Move | **A / D** or **Left / Right Arrows** |
+| Jump (and double jump) | **W** or **Up Arrow** |
 | Dash | **Left Shift** |
-| Shoot | **Left Mouse** or **Enter** |
+| Shoot | **Left Mouse** or **Space** |
 
 The dash passes through damage. It is short, cannot be steered once started, and
 you get one per trip through the air — reading a telegraph correctly and dashing
@@ -59,35 +59,6 @@ Open the project in **Unity 6000.0.41f1** and play from
 Playing `BossLevel.unity` directly also works for iterating on the fight — the
 end screen's retry button falls back to reloading in place when the persistent
 services do not exist.
-
-### Tests
-
-**Window ▸ General ▸ Test Runner ▸ EditMode ▸ Run All.**
-
-The suites cover the rules that fail silently rather than loudly: health and
-invulnerability, the object pool actually reusing instances, attack selection
-never repeating back to back, phase thresholds never skipping a phase, and the
-boss's judgement about which attack suits which situation.
-
-### Building for the web
-
-**Boss Level ▸ Build WebGL.** It applies the required player settings, checks
-that `Bootstrap` is the first scene, builds into `docs/`, and writes the
-`.nojekyll` marker GitHub Pages needs.
-
-To publish: commit `docs/`, then in the repository's **Settings ▸ Pages**, set
-the source to this branch with the **`/docs`** folder.
-
----
-
-## Documentation
-
-**[`Documentation/DESIGN.md`](Documentation/DESIGN.md)** is the design document:
-architecture, the boss's state machines and AI, the data model, coding
-conventions, testing strategy, and the reasoning behind the choices — including
-the ones that were reversed after play testing, and why.
-
-`CLAUDE.md` is working context for AI-assisted development on this repository.
 
 ---
 
