@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 566712f72d7304444a566fc2d5ae953d, type: 3}
   m_Name: ButtonClick
   m_EditorClassIdentifier: 
-  clips: []
+  clips:
+  - {fileID: 8300000, guid: 7ca52651470d4314e96d14a5f1641f05, type: 3}
   volume: 0.8
   pitchRange: {x: 0.95, y: 1.05}
   spatialBlend: 0
