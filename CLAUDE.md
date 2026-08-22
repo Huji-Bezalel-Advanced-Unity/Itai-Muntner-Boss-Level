@@ -455,3 +455,20 @@ build a pool it will never use.
   `VolcanoHazard` gained `warningSound` and `eruptSound`.
 - `AudioService` exposes `EffectsVolume` and `EffectsGroup` so self-owned
   sources mix alongside pooled ones.
+
+**Outcome audio and a fluid eruption — written, not yet compiled.**
+
+- `Audio/OutcomeAudio` — listens to `GameStateMachine.StateChanged`. Victory
+  stops the music and plays a sound into the silence; defeat swaps in its own
+  music. Separate from `EndScreen` so sound and drawing stay independent.
+- `AudioService.PlayMusic(clip, restartIfAlreadyPlaying)`; `SceneMusic` exposes
+  the flag, defaulting to **true** so a retry opens the fight's theme from the
+  top.
+- `VolcanoHazard` reworked: `eruptionDuration` plus **three `AnimationCurve`s**
+  (height, width, alpha) replace `riseDuration`/`activeDuration`, with sway and
+  tilt. **Existing prefab values for the old fields are gone and need retuning.**
+  `OnValidate` fills empty curves — a newly added `AnimationCurve` deserialises
+  with no keys and evaluates to zero, which would render the column invisible.
+- `VolcanoPool` raises `Opened` / `Erupted`; `Feel/VolcanoFeedback` plays bursts
+  and a camera shake. Events again, because a prefab cannot reference a scene
+  object.

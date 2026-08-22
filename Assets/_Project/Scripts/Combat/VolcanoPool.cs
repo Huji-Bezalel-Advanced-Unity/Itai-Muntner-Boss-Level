@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using BossLevel.Common;
 using UnityEngine;
@@ -30,6 +31,23 @@ namespace BossLevel.Combat
         /// <summary>How many vents are currently warning or erupting.</summary>
         public int ActiveCount => _active.Count;
 
+        /// <summary>Raised with the position where a vent began smouldering.</summary>
+        /// <remarks>
+        /// Announced rather than acted upon, so the presentation lives in the feel layer. It is
+        /// also the only way a vent can reach the effect pools at all: a prefab cannot hold a
+        /// reference to a scene object, and the pools are scene objects.
+        /// </remarks>
+        public event Action<Vector2> Opened;
+
+        /// <summary>Raised at the moment a vent actually erupts.</summary>
+        public event Action<Vector2> Erupted;
+
+        /// <summary>Called by a vent when it fires, so the pool can announce it.</summary>
+        public void NotifyErupted(Vector2 position)
+        {
+            Erupted?.Invoke(position);
+        }
+
         private void Awake()
         {
             if (prefab == null)
@@ -49,6 +67,8 @@ namespace BossLevel.Combat
 
             _active.Add(hazard);
             hazard.Trigger(this, groundPosition);
+
+            Opened?.Invoke(groundPosition);
 
             return hazard;
         }

@@ -122,20 +122,22 @@ namespace BossLevel.Audio
         }
 
         /// <summary>
-        /// Crossfades to a track, or does nothing if it is already the one playing.
+        /// Crossfades to a track.
         /// </summary>
-        /// <remarks>
-        /// Leaving an already-playing track alone is what lets the menu and the fight share
-        /// music without it restarting on every transition.
-        /// </remarks>
-        public void PlayMusic(AudioClip track)
+        /// <param name="track">The clip to play.</param>
+        /// <param name="restartIfAlreadyPlaying">
+        /// True to start the track over even if it is the one currently playing. False leaves it
+        /// running, which is what lets two scenes share music without it restarting on every
+        /// transition.
+        /// </param>
+        public void PlayMusic(AudioClip track, bool restartIfAlreadyPlaying = false)
         {
             if (musicSource == null || track == null)
             {
                 return;
             }
 
-            if (musicSource.clip == track && musicSource.isPlaying)
+            if (!restartIfAlreadyPlaying && musicSource.clip == track && musicSource.isPlaying)
             {
                 return;
             }

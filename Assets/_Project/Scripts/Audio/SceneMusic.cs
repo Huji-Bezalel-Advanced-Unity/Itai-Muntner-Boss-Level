@@ -7,15 +7,18 @@ namespace BossLevel.Audio
     /// </summary>
     /// <remarks>
     /// Each scene declaring its own track keeps the decision next to the thing it describes,
-    /// rather than in a table somewhere that has to be kept in step with the scene list. If two
-    /// scenes name the same clip, <see cref="AudioService"/> leaves it playing rather than
-    /// restarting it.
+    /// rather than in a table somewhere that has to be kept in step with the scene list.
     /// </remarks>
     [DisallowMultipleComponent]
     public class SceneMusic : MonoBehaviour
     {
         [Tooltip("Leave empty to fade the music out for this scene.")]
         [SerializeField] private AudioClip track;
+
+        [Tooltip("Start the track over even if it is already playing. On for the fight, so a " +
+                 "retry opens from the top rather than halfway through the previous attempt; " +
+                 "off if two scenes should share one continuous track.")]
+        [SerializeField] private bool restartFromTheBeginning = true;
 
         private void Start()
         {
@@ -32,7 +35,7 @@ namespace BossLevel.Audio
                 return;
             }
 
-            AudioService.Instance.PlayMusic(track);
+            AudioService.Instance.PlayMusic(track, restartFromTheBeginning);
         }
     }
 }

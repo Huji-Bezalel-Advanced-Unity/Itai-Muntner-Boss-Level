@@ -7,7 +7,7 @@ using UnityEngine;
 namespace BossLevel.Combat
 {
     /// <summary>
-    /// A vent that smoulders on the ground and then erupts as a column of fire straight upwards.
+    /// A vent that smoulders on the ground and then erupts as a column of fire.
     /// </summary>
     /// <remarks>
     /// The one attack shape cover and distance cannot answer. Everything else the boss does
@@ -19,10 +19,17 @@ namespace BossLevel.Combat
     /// player is never surprised by it, only caught standing still by it.
     /// </para>
     /// <para>
+    /// The eruption itself is driven by curves rather than a single linear scale. A column that
+    /// simply grows and vanishes reads as a rectangle being resized; fire does not move at a
+    /// constant speed. Bursting past full height and falling back, flaring wide at the base
+    /// before narrowing, swaying, and guttering out is what makes the same primitive read as
+    /// something alive — and being curves, all of it is tunable by eye in the Inspector.
+    /// </para>
+    /// <para>
     /// Damage is resolved by repeated overlap queries against the part of the column that has
-    /// actually risen so far, rather than by a trigger collider. A collider would have to cope
-    /// with the player already standing inside it when it activates — the normal case here —
-    /// and enter events do not fire for something already there.
+    /// actually risen, rather than by a trigger collider. A collider would have to cope with the
+    /// player already standing inside it when it activates — the normal case here — and enter
+    /// events do not fire for something already there.
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -32,11 +39,8 @@ namespace BossLevel.Combat
         [Tooltip("Warning before the eruption. The attack is only fair because this is long.")]
         [SerializeField, Min(2f)] private float warningDuration = 2.2f;
 
-        [Tooltip("How long the column takes to reach full height. Short — the warning has " +
-                 "already been given, so the eruption itself should feel sudden.")]
-        [SerializeField, Min(0.02f)] private float riseDuration = 0.12f;
-
-        [SerializeField, Min(0f)] private float activeDuration = 0.5f;
+        [Tooltip("How long the whole eruption lasts, from first spark to guttering out.")]
+        [SerializeField, Min(0.1f)] private float eruptionDuration = 0.9f;
 
         [Tooltip("How often the risen column checks what is inside it.")]
         [SerializeField, Min(0.02f)] private float damageInterval = 0.06f;
@@ -46,6 +50,26 @@ namespace BossLevel.Combat
         [SerializeField, Min(0.5f)] private float columnHeight = 7f;
         [SerializeField, Min(1)] private int damage = 1;
         [SerializeField] private LayerMask hitLayers = ~0;
+
+        [Header("Eruption shape")]
+        [Tooltip("Height across the eruption, as a fraction of full height. Overshooting past 1 " +
+                 "early and falling back is what gives the burst its kick.")]
+        [SerializeField] private AnimationCurve heightCurve;
+
+        [Tooltip("Width across the eruption. Flaring wide at the base then narrowing reads as " +
+                 "pressure escaping rather than as a box being stretched.")]
+        [SerializeField] private AnimationCurve widthCurve;
+
+        [Tooltip("Opacity across the eruption, so the column gutters out instead of vanishing.")]
+        [SerializeField] private AnimationCurve alphaCurve;
+
+        [Tooltip("How far the column sways sideways.")]
+        [SerializeField, Min(0f)] private float swayDistance = 0.18f;
+
+        [Tooltip("How much it leans as it sways. A little tilt sells the movement as fluid.")]
+        [SerializeField, Range(0f, 30f)] private float swayTilt = 7f;
+
+        [SerializeField, Min(0f)] private float swaySpeed = 3.5f;
 
         [Header("Appearance")]
         [Tooltip("The smouldering patch on the ground during the warning.")]
@@ -67,6 +91,42 @@ namespace BossLevel.Combat
         private VolcanoPool _owner;
         private Coroutine _routine;
         private Sequence _warningTween;
+        private Color _columnBaseColour;
+        private float _swayPhase;
+
+        private void Awake()
+        {
+            if (columnVisual != null)
+            {
+                _columnBaseColour = columnVisual.color;
+            }
+        }
+
+        /// <summary>
+        /// Fills in any curve Unity zero-filled when these fields were introduced.
+        /// </summary>
+        /// <remarks>
+        /// A newly added <see cref="AnimationCurve"/> deserialises with no keys on an
+        /// already-authored prefab, and an empty curve evaluates to zero — which would render
+        /// the column invisible and harmless rather than merely mis-shaped.
+        /// </remarks>
+        private void OnValidate()
+        {
+            if (heightCurve == null || heightCurve.length == 0)
+            {
+                heightCurve = DefaultHeightCurve();
+            }
+
+            if (widthCurve == null || widthCurve.length == 0)
+            {
+                widthCurve = DefaultWidthCurve();
+            }
+
+            if (alphaCurve == null || alphaCurve.length == 0)
+            {
+                alphaCurve = DefaultAlphaCurve();
+            }
+        }
 
         /// <summary>Places the vent on the ground and starts its warning.</summary>
         public void Trigger(VolcanoPool owner, Vector2 groundPosition)
@@ -74,11 +134,16 @@ namespace BossLevel.Combat
             _owner = owner;
             transform.position = groundPosition;
 
+            // Offset per eruption, so several vents burning at once do not sway in lockstep.
+            _swayPhase = Random.Range(0f, Mathf.PI * 2f);
+
             _routine = StartCoroutine(Run());
         }
 
         public void OnSpawn()
         {
+            OnValidate();
+
             if (warningVisual != null)
             {
                 warningVisual.enabled = true;
@@ -86,7 +151,7 @@ namespace BossLevel.Combat
                 warningVisual.transform.localScale = new Vector3(columnWidth * 0.5f, columnWidth * 0.25f, 1f);
             }
 
-            SetColumnHeight(0f);
+            ShapeColumn(0f, 0f, 0f, 0f);
 
             if (columnVisual != null)
             {
@@ -116,6 +181,11 @@ namespace BossLevel.Combat
             yield return new WaitForSeconds(warningDuration);
 
             eruptSound?.Play(transform.position);
+
+            if (_owner != null)
+            {
+                _owner.NotifyErupted(transform.position);
+            }
 
             yield return Erupt();
 
@@ -159,45 +229,72 @@ namespace BossLevel.Combat
             }
 
             var elapsed = 0f;
-            var totalDuration = riseDuration + activeDuration;
+            var untilNextDamage = 0f;
 
-            while (elapsed < totalDuration)
+            // Shaped every frame but damaging on an interval: the motion needs to be smooth,
+            // while re-querying the physics scene sixty times a second would not make the
+            // attack any more dangerous.
+            while (elapsed < eruptionDuration)
             {
-                // Only the part of the column that has actually risen can burn anything, so a
-                // player above it is safe until it reaches them — the column reads as travelling
-                // rather than simply appearing.
-                var risen = Mathf.Min(1f, elapsed / riseDuration) * columnHeight;
+                var progress = Mathf.Clamp01(elapsed / eruptionDuration);
 
-                SetColumnHeight(risen);
-                DamageInsideColumn(risen);
+                var height = heightCurve.Evaluate(progress) * columnHeight;
+                var width = widthCurve.Evaluate(progress) * columnWidth;
+                var alpha = alphaCurve.Evaluate(progress);
 
-                yield return new WaitForSeconds(damageInterval);
-                elapsed += damageInterval;
+                ShapeColumn(height, width, alpha, elapsed);
+
+                untilNextDamage -= Time.deltaTime;
+
+                if (untilNextDamage <= 0f)
+                {
+                    DamageInsideColumn(height, width);
+                    untilNextDamage = damageInterval;
+                }
+
+                yield return null;
+                elapsed += Time.deltaTime;
+            }
+
+            ShapeColumn(0f, 0f, 0f, elapsed);
+
+            if (columnVisual != null)
+            {
+                columnVisual.enabled = false;
             }
         }
 
-        private void SetColumnHeight(float height)
+        private void ShapeColumn(float height, float width, float alpha, float elapsed)
         {
             if (columnVisual == null)
             {
                 return;
             }
 
+            var sway = Mathf.Sin(_swayPhase + elapsed * swaySpeed) * swayDistance;
+
             // Scaled and offset together so the column grows upward from the vent regardless of
-            // where the sprite's pivot happens to be.
-            columnVisual.transform.localScale = new Vector3(columnWidth, Mathf.Max(height, 0.001f), 1f);
-            columnVisual.transform.localPosition = new Vector3(0f, height * 0.5f, 0f);
+            // where the sprite's pivot happens to be. The sway leans as well as slides, because
+            // a column that only slides reads as a picture being moved.
+            var columnTransform = columnVisual.transform;
+            columnTransform.localScale = new Vector3(Mathf.Max(width, 0.001f), Mathf.Max(height, 0.001f), 1f);
+            columnTransform.localPosition = new Vector3(sway, height * 0.5f, 0f);
+            columnTransform.localRotation = Quaternion.Euler(0f, 0f, -sway * swayTilt);
+
+            var colour = _columnBaseColour;
+            colour.a = _columnBaseColour.a * alpha;
+            columnVisual.color = colour;
         }
 
-        private void DamageInsideColumn(float height)
+        private void DamageInsideColumn(float height, float width)
         {
-            if (height <= 0f)
+            if (height <= 0.01f)
             {
                 return;
             }
 
             var centre = (Vector2)transform.position + new Vector2(0f, height * 0.5f);
-            var size = new Vector2(columnWidth, height);
+            var size = new Vector2(Mathf.Max(width, 0.01f), height);
 
             var hits = Physics2D.OverlapBoxAll(centre, size, 0f, hitLayers);
 
@@ -213,6 +310,53 @@ namespace BossLevel.Combat
                     target.TakeDamage(damage);
                 }
             }
+        }
+
+        /// <summary>Bursts past full height, falls back, holds, then drops away.</summary>
+        private static AnimationCurve DefaultHeightCurve()
+        {
+            return Smoothed(
+                new Keyframe(0f, 0f),
+                new Keyframe(0.13f, 1.15f),
+                new Keyframe(0.28f, 0.92f),
+                new Keyframe(0.62f, 1f),
+                new Keyframe(0.82f, 0.8f),
+                new Keyframe(1f, 0f));
+        }
+
+        /// <summary>Flares wide as the pressure escapes, then narrows as it burns down.</summary>
+        private static AnimationCurve DefaultWidthCurve()
+        {
+            return Smoothed(
+                new Keyframe(0f, 0.35f),
+                new Keyframe(0.09f, 1.3f),
+                new Keyframe(0.32f, 0.85f),
+                new Keyframe(0.7f, 0.72f),
+                new Keyframe(1f, 0.15f));
+        }
+
+        /// <summary>Holds solid, then gutters out rather than blinking off.</summary>
+        private static AnimationCurve DefaultAlphaCurve()
+        {
+            return Smoothed(
+                new Keyframe(0f, 0.6f),
+                new Keyframe(0.1f, 1f),
+                new Keyframe(0.72f, 1f),
+                new Keyframe(1f, 0f));
+        }
+
+        private static AnimationCurve Smoothed(params Keyframe[] keys)
+        {
+            var curve = new AnimationCurve(keys);
+
+            // Default tangents are flat, which produces visible steps between keys. Smoothing
+            // every key is what turns the points into a continuous motion.
+            for (var i = 0; i < curve.length; i++)
+            {
+                curve.SmoothTangents(i, 0f);
+            }
+
+            return curve;
         }
 
         private void OnDrawGizmosSelected()

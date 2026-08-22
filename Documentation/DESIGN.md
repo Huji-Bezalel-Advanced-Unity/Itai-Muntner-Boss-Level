@@ -475,6 +475,14 @@ the normal case here — and enter events do not fire for something already ther
 Checking only the risen part also makes the column read as travelling upwards
 rather than simply appearing.
 
+The eruption's motion is driven by **three animation curves** — height, width and
+opacity across the eruption — rather than by a single linear scale. A column that
+grows and vanishes at a constant rate reads as a rectangle being resized, because
+fire does not move at a constant speed. Bursting past full height and falling
+back, flaring wide at the base before narrowing, swaying with a slight lean, and
+guttering out is what makes the same primitive read as something alive. Being
+curves, all of it is tunable by eye rather than by editing constants.
+
 **`SummonMinionsAttack`** is the only attack that leaves something behind.
 Everything else resolves and is gone, so the fight is a series of separate
 problems; minions turn it into a situation the player is managing, because
@@ -679,6 +687,19 @@ the visual tell in one specific way — the player can be looking anywhere, and
 sound reaches them regardless. That matters most for the attacks that do not
 originate at the boss, which is why the volcanic vent carries its own rumble as
 well.
+
+Each attack has **two** slots, and the distinction matters: `TelegraphSound`
+plays as the wind-up begins and is the *warning*, while `AttackSound` plays as
+the attack lands and is the *event*. An anticipation sound in the second slot
+arrives too late to be acted on, and an impact in the first gives the wrong
+information entirely.
+
+**The two endings sound deliberately opposite.** `OutcomeAudio` cuts the music on
+victory and lets one sound land in the silence, which is far more emphatic than
+layering it over a track still playing; defeat replaces the music instead,
+because a loss should sit with the player rather than being punctuated and
+released. Retrying restarts the fight's own theme from the top, so an attempt
+never opens halfway through the previous one.
 
 ### Feel
 
