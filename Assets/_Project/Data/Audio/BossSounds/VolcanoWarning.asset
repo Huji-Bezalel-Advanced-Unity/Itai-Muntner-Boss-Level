@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 566712f72d7304444a566fc2d5ae953d, type: 3}
   m_Name: VolcanoWarning
   m_EditorClassIdentifier: 
-  clips: []
+  clips:
+  - {fileID: 8300000, guid: 0fc310c576200a44abf764137f8fa72b, type: 3}
   volume: 0.8
   pitchRange: {x: 0.95, y: 1.05}
   spatialBlend: 0
