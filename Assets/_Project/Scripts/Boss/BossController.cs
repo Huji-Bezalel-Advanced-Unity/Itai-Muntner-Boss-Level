@@ -174,6 +174,11 @@ namespace BossLevel.Boss
         {
             yield return new WaitForSeconds(openingDelay);
 
+            // The first phase is where the fight starts rather than something it changes into,
+            // so nothing would otherwise announce it — the player would be told about every
+            // phase except the one they begin in.
+            AnnouncePhase();
+
             while (health.IsAlive)
             {
                 // Phase changes are handled between attacks, never during one. Interrupting an
@@ -236,28 +241,20 @@ namespace BossLevel.Boss
             // during a moment when the boss cannot fight back.
             health.HoldInvulnerability();
 
-            // Clearing the arena is the point of the pause: it stops shots authored for the
-            // phase that just ended from landing during the phase that has not started.
-            ClearTheArena();
+            // Whatever the boss already put into the arena stays there. Sweeping it away would
+            // make the transition a guaranteed moment of safety, and the fight is more
+            // interesting if changing gear costs the player something — they still have to
+            // survive the last phase's parting shots while the boss cannot be punished for them.
             telegraph?.Stop();
 
             RebuildSelectorForCurrentPhase();
-
-            var phase = CurrentPhase;
-
-            if (bossSprite != null)
-            {
-                bossSprite.SetPhaseTint(phase.Tint);
-            }
 
             if (cameraShake != null)
             {
                 cameraShake.Play(phaseShakeStrength, phaseTransitionDuration * 0.5f);
             }
 
-            phaseChangeSound?.Play(transform.position);
-
-            PhaseChanged?.Invoke(phase, _phaseMachine.CurrentIndex);
+            AnnouncePhase();
 
             // A cue deliberately unlike any attack's: white rather than a hue, several rapid
             // pulses rather than one swell, and a shudder. A phase change means the rules just
@@ -266,6 +263,28 @@ namespace BossLevel.Boss
             yield return new WaitForSeconds(phaseTransitionDuration);
 
             health.ReleaseInvulnerability();
+        }
+
+        /// <summary>
+        /// Tells everything that cares which phase is now in effect — the boss's own colour, the
+        /// banner, and the announcement.
+        /// </summary>
+        /// <remarks>
+        /// Shared by the opening and by every transition, so the first phase is announced the
+        /// same way as the rest instead of being the silent exception.
+        /// </remarks>
+        private void AnnouncePhase()
+        {
+            var phase = CurrentPhase;
+
+            if (bossSprite != null)
+            {
+                bossSprite.SetPhaseTint(phase.Tint);
+            }
+
+            phaseChangeSound?.Play(transform.position);
+
+            PhaseChanged?.Invoke(phase, _phaseMachine.CurrentIndex);
         }
 
         private void RebuildSelectorForCurrentPhase()
@@ -292,13 +311,19 @@ namespace BossLevel.Boss
         }
 
         /// <summary>
-        /// Removes everything the boss has put into the world.
+        /// Removes everything the boss has put into the world. Only used when the fight ends.
         /// </summary>
         /// <remarks>
-        /// Vents and minions are included, not just projectiles. A vent left warning would erupt
-        /// during a moment the boss is meant to be harmless, and minions left drifting would
-        /// turn a pause meant as rest into one the player still has to fight through. Both would
-        /// be damage from a phase that has already ended.
+        /// Vents and minions are included, not just projectiles. Once the fight is decided,
+        /// anything still in flight can only take the result away — a stray shot from a boss
+        /// that is already dead would turn a win into a draw, which is the worst possible ending
+        /// to earn.
+        /// <para>
+        /// Deliberately <b>not</b> called on a phase transition. Sweeping the arena there would
+        /// make changing gear a guaranteed moment of safety; leaving it means the player still
+        /// has to survive the previous phase's parting shots while the boss cannot be punished
+        /// for them.
+        /// </para>
         /// </remarks>
         private void ClearTheArena()
         {

@@ -82,8 +82,8 @@ namespace BossLevel.Combat
         }
 
         /// <summary>
-        /// Clears the arena of minions, so a phase transition is genuinely a moment of rest
-        /// rather than a pause in which the leftovers keep closing in.
+        /// Clears the arena of minions. Used when the fight ends, so nothing left hunting can
+        /// take away a result that has already been decided.
         /// </summary>
         public void DespawnAll()
         {

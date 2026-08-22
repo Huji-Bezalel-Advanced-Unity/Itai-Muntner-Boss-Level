@@ -86,8 +86,8 @@ namespace BossLevel.Combat
         }
 
         /// <summary>
-        /// Closes every vent still pending, so a warning left over from the previous phase cannot
-        /// erupt during a transition in which the boss is supposed to be harmless.
+        /// Closes every vent still pending. Used when the fight ends, so a warning that has
+        /// already been given cannot erupt after the result is settled.
         /// </summary>
         public void DespawnAll()
         {

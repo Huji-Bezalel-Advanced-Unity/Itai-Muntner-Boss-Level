@@ -336,12 +336,23 @@ attack**. It finishes, then runs a transition sequence:
 
 ```
 boss becomes invulnerable
-existing projectiles are cleared from the arena
 phase-change VFX + shader tint + camera shake
 PhaseBanner announces the new phase        (DOTween)
 brief pause
 resume with the new phase's attack set
 ```
+
+**Whatever is already in the arena stays there.** Clearing it would make a
+transition a guaranteed moment of safety; leaving it means the player still has
+to survive the previous phase's parting shots during a window where the boss
+cannot be punished for them. The arena is only swept when the fight *ends* —
+there, a stray shot from a boss that is already dead would turn a win into a
+draw.
+
+The first phase is announced the same way as the rest, when the fight opens.
+Phase one is where the fight *starts* rather than something it changes into, so
+without that the player would be told about every phase except the one they
+begin in.
 
 This is not decoration. It gives the player a breath, telegraphs that the rules
 just changed, and prevents the distinctly unfair feeling of dying to an attack
