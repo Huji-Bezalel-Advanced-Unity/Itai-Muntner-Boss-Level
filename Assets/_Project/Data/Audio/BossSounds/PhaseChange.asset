@@ -12,7 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 566712f72d7304444a566fc2d5ae953d, type: 3}
   m_Name: PhaseChange
   m_EditorClassIdentifier: 
-  clips: []
+  clips:
+  - {fileID: 8300000, guid: a3c2a6c730352454bb6dd0aa8fb73754, type: 3}
+  - {fileID: 8300000, guid: 860fb0cc8398a4e4d8174ebf5c7000fd, type: 3}
+  - {fileID: 8300000, guid: f820e0ff93064f143a036c87a48bbd40, type: 3}
   volume: 0.8
   pitchRange: {x: 0.95, y: 1.05}
   spatialBlend: 0
