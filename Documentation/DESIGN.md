@@ -588,11 +588,34 @@ phase's multipliers. Attacks read from it and never store references to it.
 | `PhaseBanner` | Slides in on phase change, holds, slides out. |
 | `EndScreen` | Win and lose variants; staggered fade-in, retry button. |
 | `LoadingScreen` | Progress bar driven by `SceneLoader`; fade in and out. |
+| `PauseMenu` | Freezes the fight on P or Escape; continue, restart, quit. |
 
 All views are read-only observers. They subscribe to C# events on `Health`,
 `BossPhaseMachine`, and `GameStateMachine`, and hold no references back into
 gameplay. Gameplay code contains no reference to any UI type, which means the
 fight is fully functional in a scene with no canvas — useful when testing.
+
+`PauseMenu` is the exception that proves the rule, because pausing is not a view
+of anything — it acts. It sets the time scale to zero, which stops everything at
+once: physics, coroutines, projectiles mid-flight, a vent halfway through its
+warning. That works only because **all of gameplay runs on scaled time and all of
+the interface does not** — the same division that lets a damage flash animate
+through a hit stop.
+
+Two details there are load-bearing:
+
+- **Player input is switched off as well as frozen.** A zero time scale does not
+  stop `Update` running, so a dash begun while paused would start and never reach
+  its end time, stranding the player mid-dash on resume.
+- **`HitStop` is told to stand down before pausing.** It owns the time scale
+  while it runs and restores it on an *unscaled* wait, so a freeze in progress
+  would set time back to one and quietly un-pause the game — intermittently,
+  which is the worst kind of bug to be handed.
+
+Pause input is read directly rather than through `PlayerInputReader`, the one
+deliberate exception to routing input through a single place: pausing has to keep
+working exactly when gameplay input has been taken away, so it cannot depend on
+the component that gets disabled to take it away.
 
 ---
 
@@ -711,6 +734,13 @@ layering it over a track still playing; defeat replaces the music instead,
 because a loss should sit with the player rather than being punctuated and
 released. Retrying restarts the fight's own theme from the top, so an attempt
 never opens halfway through the previous one.
+
+**A full theme belongs in the music slot, not the sound one.** Music is a single
+source the next scene crossfades away; a sound effect is fire-and-forget and
+plays to its end wherever the player has got to by then. The service also cuts
+every effect still playing when a scene loads, because a sound belongs to the
+scene that made it — without that, anything started just before a transition
+follows the player into the next screen.
 
 ### Feel
 

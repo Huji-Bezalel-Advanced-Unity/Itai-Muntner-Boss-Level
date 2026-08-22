@@ -13,6 +13,12 @@ namespace BossLevel.Audio
     /// instead, because a loss should sit with the player rather than being punctuated and
     /// released.
     /// <para>
+    /// A full theme belongs in the music slot rather than the sound one. Music is a single
+    /// source that the next scene crossfades away; a sound effect is fire-and-forget and plays
+    /// to its end regardless of where the player has got to, so a minute-long victory theme
+    /// started as an effect follows them into the menu.
+    /// </para>
+    /// <para>
     /// Separate from <see cref="UI.EndScreen"/> so the sound of an ending is not tangled up with
     /// the drawing of one — either can be changed without touching the other.
     /// </para>
@@ -23,10 +29,16 @@ namespace BossLevel.Audio
         [SerializeField] private GameStateMachine game;
 
         [Header("Victory")]
-        [Tooltip("Silences the music so the victory sound lands in the quiet.")]
-        [SerializeField] private bool silenceMusicOnVictory = true;
+        [Tooltip("A victory theme. Use this rather than the sound below for anything longer " +
+                 "than a sting — music is replaced by the next scene's track, whereas a sound " +
+                 "effect plays to its end wherever the player has got to by then.")]
+        [SerializeField] private AudioClip victoryMusic;
 
+        [Tooltip("A short sting. Silence the music below to let it land in the quiet.")]
         [SerializeField] private SoundEvent victorySound;
+
+        [Tooltip("Ignored when a victory theme is set, since that replaces the music anyway.")]
+        [SerializeField] private bool silenceMusicOnVictory = true;
 
         [Header("Defeat")]
         [Tooltip("Replaces the music entirely. Leave empty to simply stop it.")]
@@ -74,7 +86,11 @@ namespace BossLevel.Audio
 
         private void OnVictory()
         {
-            if (silenceMusicOnVictory)
+            if (victoryMusic != null)
+            {
+                AudioService.Instance.PlayMusic(victoryMusic, restartIfAlreadyPlaying: true);
+            }
+            else if (silenceMusicOnVictory)
             {
                 AudioService.Instance.StopMusic();
             }

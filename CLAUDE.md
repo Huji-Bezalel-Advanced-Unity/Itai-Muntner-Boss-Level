@@ -472,3 +472,24 @@ build a pool it will never use.
 - `VolcanoPool` raises `Opened` / `Erupted`; `Feel/VolcanoFeedback` plays bursts
   and a camera shake. Events again, because a prefab cannot reference a scene
   object.
+
+**Pause menu and two bug fixes — written, not yet compiled.**
+
+- **`SpriteEffects` now calls `GetPropertyBlock` before every `SetPropertyBlock`.**
+  A `SpriteRenderer` supplies its sprite texture through its own property block,
+  and `SetPropertyBlock` *replaces* rather than merges — so writing without
+  reading first discarded the texture binding and rendered an untextured quad.
+  Symptom was minion sprites flickering between their real shape and a rectangle.
+  **Never call `SetPropertyBlock` on a `SpriteRenderer` without reading first.**
+- `AudioService` tracks playing emitters and calls `StopAllEffects()` on
+  `SceneManager.sceneLoaded`. The service outlives every scene, so a long
+  one-shot otherwise followed the player into the next screen.
+- `OutcomeAudio` gained `victoryMusic` — a full theme belongs in the music slot,
+  which the next scene crossfades away; a sound effect plays to its end regardless.
+- `UI/PauseMenu` — P or Escape, `Time.timeScale = 0`, continue / restart / quit.
+  Also disables `PlayerInputReader` (a zero time scale does not stop `Update`, so
+  a dash started while paused would never end) and calls the new `HitStop.Cancel()`
+  (a freeze finishing would restore time and un-pause the game by itself).
+  Restores the time scale before any scene load, or the next scene opens frozen.
+  Reads the keyboard directly — the one deliberate exception to routing input
+  through `PlayerInputReader`, since pause must work when that is disabled.

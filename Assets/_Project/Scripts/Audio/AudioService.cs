@@ -3,6 +3,7 @@ using BossLevel.Common;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
 
 namespace BossLevel.Audio
 {
@@ -45,6 +46,17 @@ namespace BossLevel.Audio
 
         private Pool<SoundEmitter> _emitters;
         private Tween _musicFade;
+
+        /// <summary>
+        /// Emitters currently playing, so they can all be silenced at once.
+        /// </summary>
+        /// <remarks>
+        /// This service outlives every scene, which means a one-shot started just before a scene
+        /// change would otherwise carry on playing into the next one. A long clip — a victory
+        /// sting, say — then follows the player into the menu, sounding like the game forgot to
+        /// stop.
+        /// </remarks>
+        private readonly List<SoundEmitter> _playing = new List<SoundEmitter>();
 
         /// <summary>
         /// The overall level for sound effects, so sounds that own their own source — such as
@@ -112,13 +124,33 @@ namespace BossLevel.Audio
             _lastPlayed[sound] = Time.unscaledTime;
 
             var emitter = _emitters.Get();
+
+            _playing.Add(emitter);
             emitter.Play(this, sound, position, effectsVolume, effectsGroup);
         }
 
         /// <summary>Returns a finished emitter to the pool. Called by the emitter itself.</summary>
         public void Release(SoundEmitter emitter)
         {
+            _playing.Remove(emitter);
             _emitters.Return(emitter);
+        }
+
+        /// <summary>
+        /// Cuts every sound effect currently playing. Music is untouched.
+        /// </summary>
+        /// <remarks>
+        /// Called automatically when a scene loads, because a sound belongs to the scene that
+        /// made it. Without this, anything still playing at the moment of a transition follows
+        /// the player into the next screen.
+        /// </remarks>
+        public void StopAllEffects()
+        {
+            // Iterate backwards because Release removes from the list being walked.
+            for (var i = _playing.Count - 1; i >= 0; i--)
+            {
+                Release(_playing[i]);
+            }
         }
 
         /// <summary>
@@ -196,6 +228,21 @@ namespace BossLevel.Audio
             return DOVirtual
                 .Float(musicSource.volume, target, duration, value => musicSource.volume = value)
                 .SetUpdate(true);
+        }
+
+        private void OnEnable()
+        {
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        private void OnDisable()
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            StopAllEffects();
         }
 
         protected override void OnDestroy()

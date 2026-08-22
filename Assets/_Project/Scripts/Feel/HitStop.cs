@@ -47,6 +47,26 @@ namespace BossLevel.Feel
             _running = StartCoroutine(Freeze(duration));
         }
 
+        /// <summary>
+        /// Abandons a freeze in progress without restoring time.
+        /// </summary>
+        /// <remarks>
+        /// For the pause menu, which takes ownership of the time scale itself. Letting a freeze
+        /// finish normally would set time back to one and un-pause the game a fraction of a
+        /// second after the player paused it — and only sometimes, which is the worst kind of
+        /// bug to be handed.
+        /// </remarks>
+        public void Cancel()
+        {
+            if (_running == null)
+            {
+                return;
+            }
+
+            StopCoroutine(_running);
+            _running = null;
+        }
+
         private IEnumerator Freeze(float duration)
         {
             Time.timeScale = 0f;
