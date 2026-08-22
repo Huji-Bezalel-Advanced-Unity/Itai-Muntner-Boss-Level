@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Win
   m_EditorClassIdentifier: 
   clips:
-  - {fileID: 8300000, guid: 545a524a7f3384341a82a310821a1a40, type: 3}
+  - {fileID: 8300000, guid: 830624f4127548e40895303d1564a5b1, type: 3}
   volume: 0.8
   pitchRange: {x: 0.95, y: 1.05}
   spatialBlend: 0
