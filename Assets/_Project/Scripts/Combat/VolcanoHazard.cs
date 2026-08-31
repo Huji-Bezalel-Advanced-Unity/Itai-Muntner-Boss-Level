@@ -114,17 +114,17 @@ namespace BossLevel.Combat
         {
             if (heightCurve == null || heightCurve.length == 0)
             {
-                heightCurve = DefaultHeightCurve();
+                heightCurve = EruptionCurves.Height();
             }
 
             if (widthCurve == null || widthCurve.length == 0)
             {
-                widthCurve = DefaultWidthCurve();
+                widthCurve = EruptionCurves.Width();
             }
 
             if (alphaCurve == null || alphaCurve.length == 0)
             {
-                alphaCurve = DefaultAlphaCurve();
+                alphaCurve = EruptionCurves.Alpha();
             }
         }
 
@@ -310,53 +310,6 @@ namespace BossLevel.Combat
                     target.TakeDamage(damage);
                 }
             }
-        }
-
-        /// <summary>Bursts past full height, falls back, holds, then drops away.</summary>
-        private static AnimationCurve DefaultHeightCurve()
-        {
-            return Smoothed(
-                new Keyframe(0f, 0f),
-                new Keyframe(0.13f, 1.15f),
-                new Keyframe(0.28f, 0.92f),
-                new Keyframe(0.62f, 1f),
-                new Keyframe(0.82f, 0.8f),
-                new Keyframe(1f, 0f));
-        }
-
-        /// <summary>Flares wide as the pressure escapes, then narrows as it burns down.</summary>
-        private static AnimationCurve DefaultWidthCurve()
-        {
-            return Smoothed(
-                new Keyframe(0f, 0.35f),
-                new Keyframe(0.09f, 1.3f),
-                new Keyframe(0.32f, 0.85f),
-                new Keyframe(0.7f, 0.72f),
-                new Keyframe(1f, 0.15f));
-        }
-
-        /// <summary>Holds solid, then gutters out rather than blinking off.</summary>
-        private static AnimationCurve DefaultAlphaCurve()
-        {
-            return Smoothed(
-                new Keyframe(0f, 0.6f),
-                new Keyframe(0.1f, 1f),
-                new Keyframe(0.72f, 1f),
-                new Keyframe(1f, 0f));
-        }
-
-        private static AnimationCurve Smoothed(params Keyframe[] keys)
-        {
-            var curve = new AnimationCurve(keys);
-
-            // Default tangents are flat, which produces visible steps between keys. Smoothing
-            // every key is what turns the points into a continuous motion.
-            for (var i = 0; i < curve.length; i++)
-            {
-                curve.SmoothTangents(i, 0f);
-            }
-
-            return curve;
         }
 
         private void OnDrawGizmosSelected()

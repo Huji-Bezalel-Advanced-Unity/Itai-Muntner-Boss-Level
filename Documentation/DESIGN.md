@@ -805,14 +805,36 @@ Stated here so they are visibly intentional rather than incidental.
 - **Documentation.** An XML `<summary>` on every public type and on any member
   whose purpose is not obvious from its name. Comments explain *why*, not *what*
   — the code already says what.
-- **File size.** One public type per file, named for the file. A file past
-  roughly 200 lines is a signal to split.
+- **File size.** One public type per file, named for the file. Roughly 200 lines
+  of *code* — excluding documentation and serialized configuration — is the
+  signal to split. Measured in whole lines the guideline would punish the
+  documentation this project is deliberately heavy on, which is the opposite of
+  what it is for.
 - **Magic numbers.** Tunable values are serialized fields or ScriptableObject
   data. Genuinely fixed values are named constants.
 - **Update loops.** Physics in `FixedUpdate`, input edges and rendering in
   `Update`. No physics writes from `Update`.
 - **Null and lifetime.** Cached component references resolved in `Awake`;
   subscriptions in `OnEnable`, unsubscriptions in `OnDisable`, always paired.
+
+### Where the code actually ended up
+
+62 scripts, about 5,800 non-blank lines, and 47 EditMode tests.
+
+Two files exceed the size guideline on purpose, and both say so in their own
+remarks rather than leaving a reader to wonder:
+
+- **`PlayerMotor`** — running, jumping and dashing are one responsibility and all
+  write the same rigidbody in the same fixed step. Split apart, they would be
+  separate components racing to set velocity, and working out which one won on a
+  given frame is far harder to follow than reading them in order.
+- **`BossController`** — the fight's rhythm read top to bottom. Extracting the
+  phase transition or the attack loop would mean following the fight across
+  files to answer "what happens next", which is the question the file exists to
+  answer.
+
+Everything else that grew past the line was split: the eruption's default shape
+became `EruptionCurves`, and the test doubles became their own assembly.
 
 ---
 
