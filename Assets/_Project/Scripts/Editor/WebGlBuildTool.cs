@@ -29,6 +29,25 @@ namespace BossLevel.Editor
         /// <summary>The scene the game must start from, since it creates the services.</summary>
         private const string RequiredFirstScene = "Bootstrap";
 
+        /// <summary>Where the loader config begins in Unity's generated page.</summary>
+        private const string ConfigOpening = "var config = {";
+
+        /// <summary>Injected straight after <see cref="ConfigOpening"/>. See PatchLoaderCacheControl.</summary>
+        private const string CacheControlOverride = @"
+        // Added by the Boss Level build tool. Unity's built-in cacheControl assumes it is
+        // always handed a defined URL and calls .match on it, which throws on the loading
+        // bar when it is not — this config declares no symbolsUrl, so it is not. Anything
+        // defined here overrides the loader's own version.
+        cacheControl: function (url) {
+          if (!url) {
+            return ""no-store"";
+          }
+
+          return url === config.dataUrl || url.match(/\.bundle/)
+            ? ""must-revalidate""
+            : ""no-store"";
+        },";
+
         [MenuItem("Boss Level/Build WebGL", priority = 100)]
         public static void Build()
         {
@@ -88,6 +107,7 @@ namespace BossLevel.Editor
             }
 
             WriteNoJekyllMarker();
+            PatchLoaderCacheControl();
 
             var megabytes = summary.totalSize / (1024f * 1024f);
 
@@ -231,6 +251,55 @@ namespace BossLevel.Editor
         private static void WriteNoJekyllMarker()
         {
             File.WriteAllText(Path.Combine(OutputDirectory, ".nojekyll"), string.Empty);
+        }
+
+        /// <summary>
+        /// Adds a null-safe <c>cacheControl</c> to the generated page's loader config.
+        /// </summary>
+        /// <remarks>
+        /// Unity's built-in implementation assumes it is always handed a defined URL and calls
+        /// <c>.match</c> on it. The generated config declares no <c>symbolsUrl</c>, so it is
+        /// handed <c>undefined</c> and throws — leaving the game stuck on its loading bar with
+        /// nothing but a type error to show for it. Anything defined in the config overrides the
+        /// loader's own version, so guarding it here is enough.
+        /// <para>
+        /// Applied after every build because Unity regenerates the page each time, which would
+        /// otherwise quietly undo the fix.
+        /// </para>
+        /// </remarks>
+        private static void PatchLoaderCacheControl()
+        {
+            var pagePath = Path.Combine(OutputDirectory, "index.html");
+
+            if (!File.Exists(pagePath))
+            {
+                Debug.LogWarning($"No index.html at {pagePath} to patch.");
+                return;
+            }
+
+            var page = File.ReadAllText(pagePath);
+
+            if (page.Contains("cacheControl"))
+            {
+                return;
+            }
+
+            var configStart = page.IndexOf(ConfigOpening, System.StringComparison.Ordinal);
+
+            if (configStart < 0)
+            {
+                Debug.LogWarning(
+                    "Could not find the loader config in index.html, so cacheControl was not " +
+                    "guarded. If the build hangs on its loading bar, that is why.");
+
+                return;
+            }
+
+            page = page.Insert(configStart + ConfigOpening.Length, CacheControlOverride);
+
+            File.WriteAllText(pagePath, page);
+
+            Debug.Log("Patched index.html with a null-safe cacheControl.");
         }
 
         private static string[] EnabledScenePaths()

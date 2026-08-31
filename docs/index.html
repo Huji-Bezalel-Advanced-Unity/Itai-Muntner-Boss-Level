@@ -54,6 +54,19 @@
       var buildUrl = "Build";
       var loaderUrl = buildUrl + "/docs.loader.js";
       var config = {
+        // Added by the Boss Level build tool. Unity's built-in cacheControl assumes it is
+        // always handed a defined URL and calls .match on it, which throws on the loading
+        // bar when it is not — this config declares no symbolsUrl, so it is not. Anything
+        // defined here overrides the loader's own version.
+        cacheControl: function (url) {
+          if (!url) {
+            return "no-store";
+          }
+
+          return url === config.dataUrl || url.match(/\.bundle/)
+            ? "must-revalidate"
+            : "no-store";
+        },
         arguments: [],
         dataUrl: buildUrl + "/docs.data.unityweb",
         frameworkUrl: buildUrl + "/docs.framework.js.unityweb",
