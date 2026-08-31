@@ -61,6 +61,7 @@ namespace BossLevel.Editor
             if (summary.result != BuildResult.Succeeded)
             {
                 Debug.LogError($"WebGL build {summary.result} after {summary.totalErrors} errors.");
+                LogBuildErrors(report);
                 return;
             }
 
@@ -107,9 +108,31 @@ namespace BossLevel.Editor
                       "data caching on, explicit exceptions only, high stripping.");
         }
 
-        /// <summary>Checks the mistakes that only show up once the build is hosted.</summary>
+        /// <summary>Checks the mistakes that only show up once the build is attempted or hosted.</summary>
         private static bool Validate(IReadOnlyList<string> scenes)
         {
+            if (!IsWebGlSupportInstalled())
+            {
+                // Unity's own message for this is "Error building player because build target
+                // was unsupported", which names neither the module nor where to get it.
+                Debug.LogError(
+                    "WebGL Build Support is not installed for this version of Unity. " +
+                    "Install it from Unity Hub — Installs, the gear icon on this version, " +
+                    "Add modules — then switch platform in File ▸ Build Profiles before building.");
+
+                return false;
+            }
+
+            if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.WebGL)
+            {
+                // Not fatal — the build will switch by itself — but the switch reimports every
+                // asset in the project, which is a long wait to hit unannounced mid-build.
+                Debug.LogWarning(
+                    "The active build target is not WebGL. Building will switch it, which " +
+                    "reimports the whole project first. Switching in File ▸ Build Profiles " +
+                    "beforehand makes that wait visible rather than mysterious.");
+            }
+
             var firstScene = Path.GetFileNameWithoutExtension(scenes[0]);
 
             if (firstScene == RequiredFirstScene)
@@ -124,6 +147,44 @@ namespace BossLevel.Editor
                 "Reorder them in File ▸ Build Profiles.");
 
             return false;
+        }
+
+        /// <summary>Whether this Unity installation can build for WebGL at all.</summary>
+        /// <remarks>
+        /// The playback engine directory is empty — or the call throws, depending on version —
+        /// when the platform module is missing, which is the cheapest reliable way to ask.
+        /// </remarks>
+        private static bool IsWebGlSupportInstalled()
+        {
+            try
+            {
+                var engineDirectory =
+                    BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.WebGL, BuildOptions.None);
+
+                return !string.IsNullOrEmpty(engineDirectory);
+            }
+            catch (System.Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Repeats the build's own error messages, which otherwise sit above a summary that
+        /// says only how many there were.
+        /// </summary>
+        private static void LogBuildErrors(BuildReport report)
+        {
+            foreach (var step in report.steps)
+            {
+                foreach (var message in step.messages)
+                {
+                    if (message.type == LogType.Error || message.type == LogType.Exception)
+                    {
+                        Debug.LogError($"Build error in '{step.name}': {message.content}");
+                    }
+                }
+            }
         }
 
         /// <summary>
