@@ -32,6 +32,28 @@ namespace BossLevel.Editor
         [MenuItem("Boss Level/Build WebGL", priority = 100)]
         public static void Build()
         {
+            Build(diagnostic: false);
+        }
+
+        /// <summary>
+        /// Builds with every diagnostic aid turned on: full exceptions with stack traces, and
+        /// almost no code stripping.
+        /// </summary>
+        /// <remarks>
+        /// A WebGL build that hangs on the loading bar usually says nothing at all, because the
+        /// settings that make a build small are the same ones that make it silent. Stripping
+        /// removes types only reached by reflection, and limiting exception support means a null
+        /// reference does not throw so much as stop. This build is bigger and slower and will
+        /// tell you what went wrong.
+        /// </remarks>
+        [MenuItem("Boss Level/Build WebGL (Diagnostic)", priority = 101)]
+        public static void BuildDiagnostic()
+        {
+            Build(diagnostic: true);
+        }
+
+        private static void Build(bool diagnostic)
+        {
             var scenes = EnabledScenePaths();
 
             if (scenes.Length == 0)
@@ -45,7 +67,7 @@ namespace BossLevel.Editor
                 return;
             }
 
-            ApplyWebGlSettings();
+            ApplyWebGlSettings(diagnostic);
 
             var options = new BuildPlayerOptions
             {
@@ -82,8 +104,13 @@ namespace BossLevel.Editor
         /// Exposed separately so the settings can be applied and inspected without waiting for a
         /// full build to finish.
         /// </remarks>
-        [MenuItem("Boss Level/Apply WebGL Settings", priority = 101)]
+        [MenuItem("Boss Level/Apply WebGL Settings", priority = 110)]
         public static void ApplyWebGlSettings()
+        {
+            ApplyWebGlSettings(diagnostic: false);
+        }
+
+        private static void ApplyWebGlSettings(bool diagnostic)
         {
             // Gzip with a decompression fallback, and the fallback is the important half. A
             // static host such as GitHub Pages cannot send the Content-Encoding header that
@@ -95,17 +122,27 @@ namespace BossLevel.Editor
             // Caches the build in the browser, so a second visit does not download it again.
             PlayerSettings.WebGL.dataCaching = true;
 
-            // Full exception support costs both size and speed. Explicitly thrown exceptions are
-            // enough to diagnose anything this game does.
-            PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
+            // Full exception support costs size and speed, but limiting it means a null
+            // reference does not throw so much as stop — the build simply hangs, with nothing in
+            // the console. That is worth paying for while diagnosing and not otherwise.
+            PlayerSettings.WebGL.exceptionSupport = diagnostic
+                ? WebGLExceptionSupport.FullWithStacktrace
+                : WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
 
-            // Download size is the whole player experience on the web — nobody waits.
-            PlayerSettings.SetManagedStrippingLevel(NamedBuildTarget.WebGL, ManagedStrippingLevel.High);
+            // Download size is the whole player experience on the web — nobody waits. But High
+            // strips types that are only ever reached by reflection, and DOTween in particular
+            // is reflection-heavy, so Low is the setting that is actually safe to ship.
+            PlayerSettings.SetManagedStrippingLevel(
+                NamedBuildTarget.WebGL,
+                diagnostic ? ManagedStrippingLevel.Minimal : ManagedStrippingLevel.Low);
 
             AssetDatabase.SaveAssets();
 
-            Debug.Log("WebGL player settings applied: gzip with decompression fallback, " +
-                      "data caching on, explicit exceptions only, high stripping.");
+            Debug.Log(diagnostic
+                ? "WebGL settings applied for DIAGNOSIS: full exceptions with stack traces, " +
+                  "minimal stripping. Bigger and slower, but it will say what went wrong."
+                : "WebGL settings applied: gzip with decompression fallback, data caching on, " +
+                  "explicit exceptions only, low stripping.");
         }
 
         /// <summary>Checks the mistakes that only show up once the build is attempted or hosted.</summary>
