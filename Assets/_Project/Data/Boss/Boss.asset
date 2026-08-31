@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f339be0441036a34cadabb07e58d3e55, type: 3}
   m_Name: Boss
   m_EditorClassIdentifier: 
-  maxHealth: 1000
+  maxHealth: 750
   phases:
   - {fileID: 11400000, guid: 6e9b1c6cb2026a64baf556dab53c0d6c, type: 2}
   - {fileID: 11400000, guid: 090202e1af0f6f848b07e0bd42894f98, type: 2}
