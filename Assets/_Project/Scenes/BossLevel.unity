@@ -2220,8 +2220,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 10a3cf5cbd5b64940877bf346b19a77a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHealth: 1500
-  currentHealth: 1500
+  maxHealth: 3000
+  currentHealth: 3000
 --- !u!61 &1000609909
 BoxCollider2D:
   m_ObjectHideFlags: 0
