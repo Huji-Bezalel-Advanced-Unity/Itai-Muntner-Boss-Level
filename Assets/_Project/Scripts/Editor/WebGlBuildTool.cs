@@ -29,6 +29,20 @@ namespace BossLevel.Editor
         /// <summary>The scene the game must start from, since it creates the services.</summary>
         private const string RequiredFirstScene = "Bootstrap";
 
+        /// <summary>
+        /// Canvas size written into the generated page, and the size the itch.io embed must be
+        /// set to.
+        /// </summary>
+        /// <remarks>
+        /// 16:9, matching the aspect the arena is composed for. Unity's default of 960 by 600 is
+        /// 8:5, and with a fixed orthographic camera a narrower aspect simply shows less of the
+        /// arena horizontally — the edges of the fight are cropped, which is not a cosmetic
+        /// problem in a game about dodging sideways.
+        /// </remarks>
+        private const int CanvasWidth = 1280;
+
+        private const int CanvasHeight = 720;
+
         /// <summary>Where the loader config begins in Unity's generated page.</summary>
         private const string ConfigOpening = "var config = {";
 
@@ -153,6 +167,11 @@ namespace BossLevel.Editor
             // Caches the build in the browser, so a second visit does not download it again.
             PlayerSettings.WebGL.dataCaching = true;
 
+            // The canvas the generated page is built around. Whatever this is, the itch.io embed
+            // has to be set to the same numbers, or the page crops what the game is drawing.
+            PlayerSettings.defaultWebScreenWidth = CanvasWidth;
+            PlayerSettings.defaultWebScreenHeight = CanvasHeight;
+
             // Full exception support costs size and speed, but limiting it means a null
             // reference does not throw so much as stop — the build simply hangs, with nothing in
             // the console. That is worth paying for while diagnosing and not otherwise.
@@ -170,10 +189,12 @@ namespace BossLevel.Editor
             AssetDatabase.SaveAssets();
 
             Debug.Log(diagnostic
-                ? "WebGL settings applied for DIAGNOSIS: full exceptions with stack traces, " +
-                  "minimal stripping. Bigger and slower, but it will say what went wrong."
-                : "WebGL settings applied: gzip with decompression fallback, data caching on, " +
-                  "explicit exceptions only, low stripping.");
+                ? $"WebGL settings applied for DIAGNOSIS: full exceptions with stack traces, " +
+                  $"minimal stripping, canvas {CanvasWidth}x{CanvasHeight}. Bigger and slower, " +
+                  "but it will say what went wrong."
+                : $"WebGL settings applied: gzip without decompression fallback, data caching " +
+                  $"on, explicit exceptions only, low stripping, canvas {CanvasWidth}x{CanvasHeight}. " +
+                  $"Set the itch.io embed to {CanvasWidth} by {CanvasHeight} to match.");
         }
 
         /// <summary>Checks the mistakes that only show up once the build is attempted or hosted.</summary>
