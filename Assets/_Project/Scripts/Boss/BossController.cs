@@ -23,6 +23,12 @@ namespace BossLevel.Boss
     /// That split is what makes escalation data rather than code: a later phase scales those two
     /// beats, and every attack it contains becomes harder without being touched.
     /// </para>
+    /// <para>
+    /// This file is longer than the project's usual guideline, and deliberately so: it is the
+    /// fight's rhythm read top to bottom. Extracting the phase transition or the attack loop
+    /// would mean following the fight across files to answer "what happens next", which is the
+    /// one question this file exists to answer.
+    /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public class BossController : MonoBehaviour
