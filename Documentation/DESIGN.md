@@ -895,12 +895,19 @@ Constraints carried through the design:
 - **No VFX Graph and no compute shaders.** VFX Graph requires compute support,
   which WebGL does not have; effects built in it would silently do nothing in
   the submitted build. All particles use the built-in Particle System.
-- **Gzip compression with the decompression fallback enabled.** The fallback is
-  the important half: a static host such as GitHub Pages cannot send the
-  `Content-Encoding` header that compressed Unity builds normally rely on, so
-  without it the loader fails outright and the page shows only an error. This
-  is the single most common reason a WebGL build works locally and not once
-  hosted.
+- **Gzip compression, with the decompression fallback deliberately off.** The
+  fallback decompresses in JavaScript so a host that cannot send the
+  `Content-Encoding` header — GitHub Pages, for one — can still serve a
+  compressed build. It sounds like the safer choice, and was, until it wasn't:
+  the fallback does its work in a **web worker**, so the loader unconditionally
+  downloads a worker script, and this Unity version emits neither the file nor a
+  `workerUrl` in the generated page. The build then hangs on its loading bar with
+  a type error inside Unity's own loader and no indication why.
+  <br>Without the fallback the browser decompresses via `Content-Encoding` as
+  normal, no worker is involved, and it runs. The cost is that it needs a host
+  which sends those headers — itch.io does, GitHub Pages does not. A build that
+  must run from Pages needs compression set to Disabled instead, and a much
+  larger download.
 - **Managed stripping set to High, exceptions limited to explicitly thrown.**
   Download size is the whole player experience on the web — nobody waits.
 - **Data caching on**, so a second visit does not download the build again.

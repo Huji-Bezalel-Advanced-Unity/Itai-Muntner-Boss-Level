@@ -108,6 +108,7 @@ namespace BossLevel.Editor
 
             WriteNoJekyllMarker();
             PatchLoaderCacheControl();
+            WarnIfLoaderExpectsAMissingWorker();
 
             var megabytes = summary.totalSize / (1024f * 1024f);
 
@@ -132,12 +133,22 @@ namespace BossLevel.Editor
 
         private static void ApplyWebGlSettings(bool diagnostic)
         {
-            // Gzip with a decompression fallback, and the fallback is the important half. A
-            // static host such as GitHub Pages cannot send the Content-Encoding header that
-            // compressed Unity builds normally rely on, so without the fallback the loader
-            // fails outright and the page shows nothing but an error.
+            // Gzip, and deliberately WITHOUT the decompression fallback.
+            //
+            // The fallback decompresses in JavaScript so that a host which cannot send the
+            // Content-Encoding header — GitHub Pages, for one — can still serve a compressed
+            // build. It sounds like the safer choice and was, until it wasn't: the fallback does
+            // its work in a web worker, so the loader unconditionally downloads a worker script,
+            // and this Unity version emits neither the file nor a workerUrl in the generated
+            // page. The result is a build that hangs on its loading bar with a type error and no
+            // clue as to why.
+            //
+            // Without the fallback the browser decompresses using Content-Encoding as normal, no
+            // worker is involved, and the build starts. That means it needs a host that sends
+            // those headers — itch.io does. If the build must also run from GitHub Pages, set
+            // the format to Disabled instead and accept a much larger download.
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
-            PlayerSettings.WebGL.decompressionFallback = true;
+            PlayerSettings.WebGL.decompressionFallback = false;
 
             // Caches the build in the browser, so a second visit does not download it again.
             PlayerSettings.WebGL.dataCaching = true;
@@ -300,6 +311,46 @@ namespace BossLevel.Editor
             File.WriteAllText(pagePath, page);
 
             Debug.Log("Patched index.html with a null-safe cacheControl.");
+        }
+
+        /// <summary>
+        /// Warns when the loader will try to download a worker script the build did not produce.
+        /// </summary>
+        /// <remarks>
+        /// The decompression fallback decompresses in a web worker, so the loader downloads one
+        /// unconditionally — but Unity does not always emit the file or declare a
+        /// <c>workerUrl</c> in the generated page. When that happens the build hangs on its
+        /// loading bar with nothing but a type error, which is a miserable thing to diagnose from
+        /// a hosted page. Cheaper to notice it here, where the files are still in front of us.
+        /// </remarks>
+        private static void WarnIfLoaderExpectsAMissingWorker()
+        {
+            var buildDirectory = Path.Combine(OutputDirectory, "Build");
+
+            if (!Directory.Exists(buildDirectory))
+            {
+                return;
+            }
+
+            var loader = Directory.GetFiles(buildDirectory, "*.loader.js");
+
+            if (loader.Length == 0)
+            {
+                return;
+            }
+
+            var wantsWorker = File.ReadAllText(loader[0]).Contains("workerUrl");
+            var hasWorker = Directory.GetFiles(buildDirectory, "*worker*").Length > 0;
+
+            if (!wantsWorker || hasWorker)
+            {
+                return;
+            }
+
+            Debug.LogError(
+                "This build's loader downloads a worker script, but no worker file was produced. " +
+                "It will hang on the loading bar. Turn off Decompression Fallback in Player " +
+                "Settings — the fallback is what needs the worker.");
         }
 
         private static string[] EnabledScenePaths()
