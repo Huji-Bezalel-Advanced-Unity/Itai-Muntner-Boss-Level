@@ -204,8 +204,6 @@ small non-generic `MonoBehaviour` that owns one.
 | Type | Source |
 |---|---|
 | Art | Programmer art — one square sprite, scaled and tinted throughout |
-| Music | _to fill in_ |
-| Sound effects | _to fill in_ |
 | Tweening | [DOTween](http://dotween.demigiant.com/) by Demigiant |
 | Engine | Unity 6 (URP 2D Renderer) |
 | Inspiration | 🎮 *Cuphead* by Studio MDHR |
