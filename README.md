@@ -78,58 +78,29 @@ classDiagram
 
     class BossController {
         <<MonoBehaviour>>
-        +CurrentPhase
-        +CurrentAttack
-        +Defeated
-        +PhaseChanged
-        +StopFighting()
     }
-
     class BossPhaseMachine {
-        +CurrentIndex
-        +PhaseCount
-        +IsFinalPhase
         +TryAdvance(healthFraction)
-        +PhaseIndexFor(healthFraction)
     }
-
     class AttackSelector {
         +Next(context)
     }
-
     class BossContext {
-        +AimLead
-        +TargetIsGrounded
-        +TargetMobility
-        +HasLineOfSightToTarget
         +AimAngle()
         +Fire(direction)
-        +SpawnVolcano(position)
-        +SpawnMinion(position)
     }
-
     class BossDefinition {
         <<ScriptableObject>>
         +MaxHealth
-        +Phases
     }
-
     class BossPhase {
         <<ScriptableObject>>
         +HealthThreshold
-        +Attacks
-        +CooldownRange
         +TelegraphMultiplier
-        +RecoveryMultiplier
         +AimLead
-        +Tint
     }
-
     class BossAttack {
         <<abstract ScriptableObject>>
-        +TelegraphDuration
-        +RecoveryDuration
-        +TelegraphCue
         +Execute(context)
         +Suitability(context)
     }
@@ -140,7 +111,6 @@ classDiagram
     BossController --> BossDefinition
     BossDefinition --> BossPhase : 3
     BossPhase --> BossAttack : 1..*
-    AttackSelector --> BossAttack
 
     BossAttack <|-- SpreadShotAttack
     BossAttack <|-- AimedBurstAttack
@@ -151,31 +121,10 @@ classDiagram
     BossAttack <|-- SummonMinionsAttack
 ```
 
-### One attack cycle
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant BC as BossController
-    participant AS as AttackSelector
-    participant BA as BossAttack asset
-    participant BT as BossTelegraph
-    participant PP as ProjectilePool
-
-    BC->>AS: Next(context)
-    AS-->>BC: attack
-    BC->>BT: Play(attack.TelegraphCue, scaled telegraph)
-    Note over BC: wait telegraph
-    BC->>BA: Execute(context)
-    BA->>PP: Spawn(origin, direction)
-    Note over BC: wait recovery
-    Note over BC: wait cooldown
-```
-
 `BossController` sequences telegraph, active, recovery and cooldown. An attack
-asset supplies only the active beat; the phase supplies the multipliers.
+supplies the active beat; the phase supplies the multipliers.
 
-### Combat and pooling
+### Shared foundations
 
 ```mermaid
 classDiagram
@@ -183,41 +132,22 @@ classDiagram
 
     class IDamageable {
         <<interface>>
-        +IsAlive
         +TakeDamage(amount)
     }
-
     class ITarget {
         <<interface>>
         +Position
         +Velocity
         +IsGrounded
     }
-
     class IPoolable {
         <<interface>>
         +OnSpawn()
         +OnDespawn()
     }
-
     class Pool~T~ {
-        +IdleCount
-        +CreatedCount
         +Get()
         +Return(instance)
-    }
-
-    class Health {
-        <<MonoBehaviour>>
-        +Current
-        +Fraction
-        +IsInvulnerable
-        +Changed
-        +Damaged
-        +Died
-        +TakeDamage(amount)
-        +HoldInvulnerability()
-        +ReleaseInvulnerability()
     }
 
     IDamageable <|.. Health
@@ -234,8 +164,6 @@ classDiagram
     VolcanoPool --> Pool~T~
     VfxPool --> Pool~T~
     AudioService --> Pool~T~
-
-    Minion --> Health
 ```
 
 `Pool<T>` is a plain C# class rather than a component, so each concrete pool is a
@@ -245,8 +173,7 @@ small non-generic `MonoBehaviour` that owns one.
 
 - Attacks, phases, the boss, sounds and the scene catalog are ScriptableObject
   assets.
-- `SceneLoader` and `AudioService` are the only persistent singletons. Everything
-  else is wired through the Inspector.
+- `SceneLoader` and `AudioService` are the only persistent singletons.
 - UI observes C# events on `Health`, `BossPhaseMachine` and `GameStateMachine`.
   Gameplay code contains no reference to a UI type.
 - 47 EditMode tests across five suites: health, pooling, attack selection, phase
