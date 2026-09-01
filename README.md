@@ -203,7 +203,6 @@ small non-generic `MonoBehaviour` that owns one.
 
 | Type | Source |
 |---|---|
-| Art | Programmer art — one square sprite, scaled and tinted throughout |
 | Tweening | [DOTween](http://dotween.demigiant.com/) by Demigiant |
 | Engine | Unity 6 (URP 2D Renderer) |
 | Inspiration | 🎮 *Cuphead* by Studio MDHR |
