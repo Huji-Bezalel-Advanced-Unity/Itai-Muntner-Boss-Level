@@ -12,9 +12,9 @@ Final assignment for the Advanced Unity course.
 
 | | |
 |---|---|
-| ▶ **Play in your browser** | [Crazy Diamond on itch.io]([ITCH_URL](https://itaimuntner.itch.io/crazy-diamond)) |
-| 🎬 **Gameplay video** | [Watch the fight]([GAMEPLAY_VIDEO_URL](https://www.youtube.com/watch?v=Bg_HPXVisnk)) |
-| 🧭 **Code review video** | [Walkthrough of the architecture]([CODE_REVIEW_VIDEO_URL](https://www.youtube.com/watch?v=msbyML4nfTM)) |
+| ▶ **Play in your browser** | [Crazy Diamond on itch.io](https://itaimuntner.itch.io/crazy-diamond) |
+| 🎬 **Gameplay video** | [Watch the fight](https://www.youtube.com/watch?v=Bg_HPXVisnk) |
+| 🧭 **Code review video** | [Walkthrough of the architecture](https://www.youtube.com/watch?v=msbyML4nfTM) |
 | 📄 **Design document** | [Documentation/DESIGN.md](Documentation/DESIGN.md) |
 
 ---
