@@ -15,15 +15,13 @@ Final assignment for the Advanced Unity course.
 | ▶ **Play in your browser** | [Crazy Diamond on itch.io](https://itaimuntner.itch.io/crazy-diamond) |
 | 🎬 **Gameplay video** | [Watch the fight](https://www.youtube.com/watch?v=Bg_HPXVisnk) |
 | 🧭 **Code review video** | [Walkthrough of the architecture](https://www.youtube.com/watch?v=msbyML4nfTM) |
-| 📄 **Design document** | [Documentation/DESIGN.md](Documentation/DESIGN.md) |
 
 ---
 
 ## The fight
 
-You occupy the left of a fixed arena and fight a boss anchored on the right. It
-escalates through three phases as its health falls, gaining attacks and losing
-the patience it showed you in the first one.
+A fixed, single-screen arena. The player starts on the left, the boss is anchored
+on the right, and the fight runs until one of them reaches zero health.
 
 ### Controls
 
@@ -35,74 +33,248 @@ the patience it showed you in the first one.
 | Shoot | **Left Mouse** or **Space** |
 | Pause | **P** or **Escape** |
 
-The dash passes through damage. It is short, cannot be steered once started, and
-you get one per trip through the air — reading a telegraph correctly and dashing
-*through* an attack is the strongest thing you can do, and the main reason the
-fight rewards nerve over caution.
+The dash is short, cannot be steered once started, grants invulnerability for its
+duration, and is limited to one per trip through the air.
 
 > Playing in the browser: click the game once before using the keyboard. WebGL
 > only receives key presses while its canvas has focus.
 
-### What the boss does
+### Attacks
 
-Seven attacks, chosen to demand different answers rather than to be seven ways
-of firing forwards:
-
-| Attack | What it asks of you |
+| Attack | What it does |
 |---|---|
-| Spread shot | Punishes standing still — move to an edge of the fan |
-| Aimed burst | Re-aims between shots, so it tracks: keep moving |
-| Sweep | Locks its aim — a pattern to cross, pick a side |
-| Rain | Falls from overhead, so cornering stops being safe |
-| Slam | Shockwaves along the floor — jump or dash them |
-| Eruption | Vents open underfoot and erupt upwards — leave the ground you are on |
-| Summon | Minions that hunt you until killed, competing for your shots |
+| Spread shot | A fan of projectiles, aimed at the player |
+| Aimed burst | A short burst, re-aimed between each shot |
+| Sweep | A stream of shots rotating across an arc |
+| Rain | Projectiles falling from above, scattered around the player |
+| Slam | Shockwaves travelling along the floor |
+| Eruption | Vents that open on the ground and erupt upwards after a warning |
+| Summon | Minions that pursue the player and burst on contact |
 
-Every attack announces itself first, with its own colour, motion and sound. That
-warning is a promise: the fight is difficult but it never surprises you, and a
-phase change is signalled differently again so a change of rules never reads as
-just another wind-up.
+### Boss behaviour
 
-### Why it feels like it is paying attention
-
-Two mechanisms, and neither of them is a difficulty number.
-
-**It leads its shots.** The boss predicts where you will be when a projectile
-arrives rather than firing at where you are — and it leads *further* in later
-phases, so it visibly learns to read you instead of merely firing faster.
-
-**It chooses.** Each attack scores how well it suits the situation right now,
-and the boss draws two candidates and uses the better one. Standing still invites
-the pinpoint attacks; running invites the ones that cover ground; a shockwave
-along the floor is never sent at someone already in the air.
-
-The point of both is the same. Standing still and trading shots is the least
-interesting thing a player can do, and it stopped being viable not because the
-boss hits harder, but because holding still invites the attacks that do not miss.
+- Three phases, entered at 100%, 66% and 33% of the boss's health.
+- Each phase defines its own attack list, cooldown range, telegraph and recovery
+  multipliers, aim lead, and sprite tint.
+- Every attack plays a telegraph — its own colour, motion and sound — before it
+  lands. The phase change uses a visibly different one.
+- Shots are aimed at a predicted intercept point rather than the player's current
+  position. How far the boss leads is set per phase.
+- Each attack scores its suitability for the current situation. The selector
+  draws two candidates and uses the higher-scoring one.
+- Attack order comes from a shuffle bag, so no attack follows itself.
+- A phase change pauses the boss and makes it invulnerable, but does not clear
+  what is already in the arena.
 
 ---
 
-## How it is built
+## Architecture
 
-The full reasoning — including the decisions that play-testing reversed — is in
-**[the design document](Documentation/DESIGN.md)**. The short version:
+### The boss
 
-- **The boss is data, not code.** Attacks and phases are ScriptableObject assets.
-  The controller owns the rhythm — warn, strike, recover, pause — and the assets
-  own what happens inside it. "Phase three is harder" is two multipliers, and a
-  harder spread shot is a duplicated asset rather than a new class.
-- **One fairness contract, stated once.** Telegraph and recovery are sequenced by
-  the controller rather than by each attack, so every attack ever added gives the
-  player a warning beforehand and a window to punish afterwards.
-- **One pool, five users.** The same `Pool<T>` backs projectiles, minions,
-  volcanic vents, particle bursts and audio sources. It is a plain C# class
-  rather than a component, because Unity cannot attach generic MonoBehaviours.
-- **Gameplay never references the interface.** Every view observes C# events, so
-  the fight runs correctly in a scene with no canvas in it at all.
-- **47 EditMode tests**, aimed squarely at the things that fail *silently* — a
-  phase quietly skipped by one large hit, a pool that stops pooling, a boss whose
-  judgement is inverted. None of those look like bugs while playing. The game
-  just feels worse.
+```mermaid
+classDiagram
+    direction LR
+
+    class BossController {
+        <<MonoBehaviour>>
+        +CurrentPhase
+        +CurrentAttack
+        +Defeated
+        +PhaseChanged
+        +StopFighting()
+    }
+
+    class BossPhaseMachine {
+        +CurrentIndex
+        +PhaseCount
+        +IsFinalPhase
+        +TryAdvance(healthFraction)
+        +PhaseIndexFor(healthFraction)
+    }
+
+    class AttackSelector {
+        +Next(context)
+    }
+
+    class BossContext {
+        +AimLead
+        +TargetIsGrounded
+        +TargetMobility
+        +HasLineOfSightToTarget
+        +AimAngle()
+        +Fire(direction)
+        +SpawnVolcano(position)
+        +SpawnMinion(position)
+    }
+
+    class BossDefinition {
+        <<ScriptableObject>>
+        +MaxHealth
+        +Phases
+    }
+
+    class BossPhase {
+        <<ScriptableObject>>
+        +HealthThreshold
+        +Attacks
+        +CooldownRange
+        +TelegraphMultiplier
+        +RecoveryMultiplier
+        +AimLead
+        +Tint
+    }
+
+    class BossAttack {
+        <<abstract ScriptableObject>>
+        +TelegraphDuration
+        +RecoveryDuration
+        +TelegraphCue
+        +Execute(context)
+        +Suitability(context)
+    }
+
+    BossController --> BossPhaseMachine
+    BossController --> AttackSelector
+    BossController --> BossContext
+    BossController --> BossDefinition
+    BossDefinition --> BossPhase : 3
+    BossPhase --> BossAttack : 1..*
+    AttackSelector --> BossAttack
+
+    BossAttack <|-- SpreadShotAttack
+    BossAttack <|-- AimedBurstAttack
+    BossAttack <|-- SweepAttack
+    BossAttack <|-- RainAttack
+    BossAttack <|-- SlamAttack
+    BossAttack <|-- EruptionAttack
+    BossAttack <|-- SummonMinionsAttack
+```
+
+### One attack cycle
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant BC as BossController
+    participant AS as AttackSelector
+    participant BA as BossAttack asset
+    participant BT as BossTelegraph
+    participant PP as ProjectilePool
+
+    BC->>AS: Next(context)
+    AS-->>BC: attack
+    BC->>BT: Play(attack.TelegraphCue, scaled telegraph)
+    Note over BC: wait telegraph
+    BC->>BA: Execute(context)
+    BA->>PP: Spawn(origin, direction)
+    Note over BC: wait recovery
+    Note over BC: wait cooldown
+```
+
+`BossController` sequences telegraph, active, recovery and cooldown. An attack
+asset supplies only the active beat; the phase supplies the multipliers.
+
+### Combat and pooling
+
+```mermaid
+classDiagram
+    direction LR
+
+    class IDamageable {
+        <<interface>>
+        +IsAlive
+        +TakeDamage(amount)
+    }
+
+    class ITarget {
+        <<interface>>
+        +Position
+        +Velocity
+        +IsGrounded
+    }
+
+    class IPoolable {
+        <<interface>>
+        +OnSpawn()
+        +OnDespawn()
+    }
+
+    class Pool~T~ {
+        +IdleCount
+        +CreatedCount
+        +Get()
+        +Return(instance)
+    }
+
+    class Health {
+        <<MonoBehaviour>>
+        +Current
+        +Fraction
+        +IsInvulnerable
+        +Changed
+        +Damaged
+        +Died
+        +TakeDamage(amount)
+        +HoldInvulnerability()
+        +ReleaseInvulnerability()
+    }
+
+    IDamageable <|.. Health
+    ITarget <|.. PlayerMotor
+
+    IPoolable <|.. Projectile
+    IPoolable <|.. Minion
+    IPoolable <|.. VolcanoHazard
+    IPoolable <|.. VfxBurst
+    IPoolable <|.. SoundEmitter
+
+    ProjectilePool --> Pool~T~
+    MinionPool --> Pool~T~
+    VolcanoPool --> Pool~T~
+    VfxPool --> Pool~T~
+    AudioService --> Pool~T~
+
+    Minion --> Health
+```
+
+`Pool<T>` is a plain C# class rather than a component, so each concrete pool is a
+small non-generic `MonoBehaviour` that owns one.
+
+### Notes
+
+- Attacks, phases, the boss, sounds and the scene catalog are ScriptableObject
+  assets.
+- `SceneLoader` and `AudioService` are the only persistent singletons. Everything
+  else is wired through the Inspector.
+- UI observes C# events on `Health`, `BossPhaseMachine` and `GameStateMachine`.
+  Gameplay code contains no reference to a UI type.
+- 47 EditMode tests across five suites: health, pooling, attack selection, phase
+  thresholds and attack suitability.
+
+---
+
+## Project structure
+
+```
+Assets/_Project/
+├── Scenes/          Bootstrap · MainMenu · BossLevel
+├── Scripts/
+│   ├── App/         GameBootstrap, SceneLoader, SceneCatalog, GameStateMachine
+│   ├── Audio/       AudioService, SoundEvent, SoundEmitter, LoopingSound
+│   ├── Boss/        BossController, BossPhaseMachine, AttackSelector, BossContext
+│   │   ├── Attacks/ BossAttack and the seven concrete attacks
+│   │   └── Data/    BossDefinition, BossPhase
+│   ├── Combat/      Health, Projectile, Minion, VolcanoHazard and their pools
+│   ├── Feel/        SpriteEffects, DamageFeedback, HitStop, CameraShake, VFX
+│   ├── UI/          Health bars, phase banner, end screen, pause menu
+│   ├── Common/      Pool, IPoolable, PersistentSingleton
+│   └── Editor/      WebGlBuildTool
+├── Data/            ScriptableObject assets
+├── Shaders/         SpriteEffects.shader
+├── Prefabs/  Art/  Settings/
+└── Tests/           EditMode tests and their support assembly
+```
 
 ---
 
@@ -111,18 +283,13 @@ The full reasoning — including the decisions that play-testing reversed — is
 Open the project in **Unity 6000.0.41f1** and play from
 `Assets/_Project/Scenes/Bootstrap.unity`.
 
-Playing `BossLevel.unity` directly also works while iterating on the fight — the
-retry button falls back to reloading in place when the persistent services do
-not exist.
+`BossLevel.unity` can also be played directly; the retry button falls back to
+reloading in place when the persistent services do not exist.
 
-### Tests
+**Tests:** Window ▸ General ▸ Test Runner ▸ EditMode ▸ Run All.
 
-**Window ▸ General ▸ Test Runner ▸ EditMode ▸ Run All.**
-
-### Building for the web
-
-**Boss Level ▸ Build WebGL.** It applies the required player settings, refuses to
-build unless `Bootstrap` is the first scene, and writes the output to `docs/`.
+**Web build:** Boss Level ▸ Build WebGL. Applies the player settings, checks that
+`Bootstrap` is the first scene, and writes the output to `docs/`.
 
 ---
 
